@@ -121,7 +121,7 @@ __global__ void dynproc_kernel(
 	if(IN_RANGE(xidx, 0, cols-1)){
             prev[tx] = gpuSrc[xidx];
 	}
-
+	__syncthreads(); // [Ronny] Added sync to avoid race on prev Aug. 14 2012
         bool computed;
         for (int i=0; i<iteration ; i++){ 
             computed = false;
@@ -142,6 +142,7 @@ __global__ void dynproc_kernel(
                 break;
             if(computed)	 //Assign the computation range
                 prev[tx]= result[tx];
+	    __syncthreads(); // [Ronny] Added sync to avoid race on prev Aug. 14 2012
       }
 
       // update the global memory

@@ -31,7 +31,15 @@ benchmark directory and make individual programs.
 There is a 'run' file specifying the sample command to run each program.
 
 IV. Change Log
-
+Oct. 09, 2012: Rodinia 2.2 is released
+        - BFS: Delete invalid flag CL_MEM_USE_HOST_PTR from _clMallocRW and _clMalloc functions in opencl verion. Thanks Alexey Kravets (CARP European research project).
+        - Hotspot: hotspot_kernel.cl:61 correct the index calculation as grid_cols *loadYidx + loadXidx. Correct the same problem in hotspot.cu:152. Thanks Alexey Kravets.
+        - Pathfinder: Added two __syncthreads in dynproc_kernel function of CUDA version to avoid data race. Thanks Ronny Krashinsky(Nvidia company) and Jiayuan Meng(Argonne National Laboratory). Alexey Kravets found and corrected the same problem in opencl version. 
+        - SRAD: Replace CUDA function __syncthreads() in srad OpenCL kernel with OpenCL barrier(CLK_LOCAL_MEM_FENCE).
+        - NN: Fixed the bug of CUDA version on certain input sizes. The new version detects excess of x-dimension size limit of a CUDA block grid and executes a two-dimensional grid if needed.(Only cuda version has this problem)
+        - Promote B+Tree to main distribution (with output)
+        - Promote Myocyte to main distribution (with output)
+	
 June 27, 2012: Rodinia 2.1 is released
 	- Include fixes for SRAD, Heartwall, Particle Filter and Streamcluster
 Nov 23, 2011: Rodinia 2.0.1 is released

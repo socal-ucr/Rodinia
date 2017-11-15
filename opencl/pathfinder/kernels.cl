@@ -99,6 +99,7 @@ __kernel void dynproc_kernel (int iteration,
 			//Assign the computation range
 			prev[tx] = result[tx];
 		}
+		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 
 	// update the global memory

@@ -58,7 +58,7 @@ __kernel void hotspot(  int iteration,  //number of iteration
 
 	// load data if it is within the valid input range
 	int loadYidx=yidx, loadXidx=xidx;
-	int index = grid_rows*loadYidx+loadXidx;
+	int index = grid_cols*loadYidx+loadXidx;
        
 	if(IN_RANGE(loadYidx, 0, grid_rows-1) && IN_RANGE(loadXidx, 0, grid_cols-1)){
             temp_on_cuda[ty][tx] = temp_src[index];  // Load the temperature data from global memory to shared memory

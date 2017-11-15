@@ -65,4 +65,5 @@ clean:
 		./kernel/*.o \
 		./util/num/*.o \
 		./util/timer/*.o \
+                ./util/device/*.o \
 		lavaMD
