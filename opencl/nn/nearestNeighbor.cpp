@@ -4,14 +4,9 @@
 #include "nearestNeighbor.h"
 
 cl_context context=NULL;
-cl_device_id *devices=NULL;
-cl_command_queue commandQueue=NULL;   /**< CL command queue */
 
 int main(int argc, char *argv[]) {
   std::vector<Record> records;
-  //Record *records = (Record *) malloc(sizeof(Record) * REC_WINDOW); 
-  //char *fullRecords = (char *) malloc (sizeof(char) * REC_WINDOW * REC_LENGTH);
-  //char fullRecords[REC_WINDOW][REC_LENGTH];
   float *recordDistances;
   //LatLong locations[REC_WINDOW];
   std::vector<LatLong> locations;
@@ -67,12 +62,12 @@ float *OpenClFindNearestNeighbors(
     cl_kernel NN_kernel;
         cl_int status;
         cl_program cl_NN_program;
-        cl_NN_program = cl_CompileProgram(
+        cl_NN_program = cl_compileProgram(
             (char *)"nearestNeighbor_kernel.cl",NULL);
        
         NN_kernel = clCreateKernel(
             cl_NN_program, "NearestNeighbor", &status);
-        status = cl_errChk(status, (char *)"Error Creating Nearest Neighbor kernel");
+        status = cl_errChk(status, (char *)"Error Creating Nearest Neighbor kernel",true);
         if(status)exit(1);
     // 2. set up memory on device and send ipts data to device
     // copy ipts(1,2) to device
@@ -108,7 +103,7 @@ float *OpenClFindNearestNeighbors(
     argchk |= clSetKernelArg(NN_kernel, 3, sizeof(float), (void *)&lat);
     argchk |= clSetKernelArg(NN_kernel, 4, sizeof(float), (void *)&lng);
 
-    cl_errChk(argchk,"ERROR in Setting Nearest Neighbor kernel args");
+    cl_errChk(argchk,"ERROR in Setting Nearest Neighbor kernel args",true);
 
     // 4. enqueue kernel
     size_t globalWorkSize[1];
@@ -121,7 +116,7 @@ float *OpenClFindNearestNeighbors(
         globalWorkSize,NULL,
         0, NULL, &kernelEvent);
 
-    cl_errChk(error,"ERROR in Executing Kernel NearestNeighbor");
+    cl_errChk(error,"ERROR in Executing Kernel NearestNeighbor",true);
 
     // 5. transfer data off of device
     
@@ -138,38 +133,39 @@ float *OpenClFindNearestNeighbors(
         NULL,
         &readEvent);
 
-    cl_errChk(error,"ERROR with clEnqueueReadBuffer");
+    cl_errChk(error,"ERROR with clEnqueueReadBuffer",true);
     if (timing) {
+        clFinish(command_queue);
         cl_ulong eventStart,eventEnd,totalTime=0;
         printf("# Records\tWrite(s) [size]\t\tKernel(s)\tRead(s)  [size]\t\tTotal(s)\n");
         printf("%d        \t",numRecords);
         // Write Buffer
         error = clGetEventProfilingInfo(writeEvent,CL_PROFILING_COMMAND_START,
                                         sizeof(cl_ulong),&eventStart,NULL);
-        cl_errChk(error,"ERROR in Event Profiling (Write Start)"); 
+        cl_errChk(error,"ERROR in Event Profiling (Write Start)",true); 
         error = clGetEventProfilingInfo(writeEvent,CL_PROFILING_COMMAND_END,
                                         sizeof(cl_ulong),&eventEnd,NULL);
-        cl_errChk(error,"ERROR in Event Profiling (Write End)");
+        cl_errChk(error,"ERROR in Event Profiling (Write End)",true);
 
         printf("%f [%.2fMB]\t",(float)((eventEnd-eventStart)/1e9),(float)((sizeof(LatLong) * numRecords)/1e6));
         totalTime += eventEnd-eventStart;
         // Kernel
         error = clGetEventProfilingInfo(kernelEvent,CL_PROFILING_COMMAND_START,
                                         sizeof(cl_ulong),&eventStart,NULL);
-        cl_errChk(error,"ERROR in Event Profiling (Kernel Start)"); 
+        cl_errChk(error,"ERROR in Event Profiling (Kernel Start)",true); 
         error = clGetEventProfilingInfo(kernelEvent,CL_PROFILING_COMMAND_END,
                                         sizeof(cl_ulong),&eventEnd,NULL);
-        cl_errChk(error,"ERROR in Event Profiling (Kernel End)");
+        cl_errChk(error,"ERROR in Event Profiling (Kernel End)",true);
 
         printf("%f\t",(float)((eventEnd-eventStart)/1e9));
         totalTime += eventEnd-eventStart;
         // Read Buffer
         error = clGetEventProfilingInfo(readEvent,CL_PROFILING_COMMAND_START,
                                         sizeof(cl_ulong),&eventStart,NULL);
-        cl_errChk(error,"ERROR in Event Profiling (Read Start)"); 
+        cl_errChk(error,"ERROR in Event Profiling (Read Start)",true); 
         error = clGetEventProfilingInfo(readEvent,CL_PROFILING_COMMAND_END,
                                         sizeof(cl_ulong),&eventEnd,NULL);
-        cl_errChk(error,"ERROR in Event Profiling (Read End)");
+        cl_errChk(error,"ERROR in Event Profiling (Read End)",true);
 
         printf("%f [%.2fMB]\t",(float)((eventEnd-eventStart)/1e9),(float)((sizeof(float) * numRecords)/1e6));
         totalTime += eventEnd-eventStart;
@@ -179,8 +175,7 @@ float *OpenClFindNearestNeighbors(
     // 6. return finalized data and release buffers
     clReleaseMemObject(d_locations);
     clReleaseMemObject(d_distances);
-    // sort the distancePoints so that the smallest distance is at the front
-		return distances;
+	return distances;
 }
 
 int loadData(char *filename,std::vector<Record> &records,std::vector<LatLong> &locations){
@@ -233,20 +228,17 @@ int loadData(char *filename,std::vector<Record> &records,std::vector<LatLong> &l
         fclose(fp);
     }
     fclose(flist);
-//    for(i=0;i<rec_count*REC_LENGTH;i++) printf("%c",sandbox[i]);
     return recNum;
 }
 
 void findLowest(std::vector<Record> &records,float *distances,int numRecords,int topN){
   int i,j;
-  float min;
   float val;
   int minLoc;
   Record *tempRec;
   float tempDist;
   
   for(i=0;i<topN;i++) {
-    min = FLT_MAX;
     minLoc = i;
     for(j=i;j<numRecords;j++) {
       val = distances[j];

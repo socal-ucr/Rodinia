@@ -32,6 +32,9 @@ There is a 'run' file specifying the sample command to run each program.
 
 IV. Change Log
 
+Nov 23, 2011: Rodinia 2.0.1 is released
+	- Include a CUDA version of NN comparable to the OCL version.
+	- Use a new version of clutils that is BSD, not GPL.
 Nov 11, 2011: Rodinia 2.0 is released
 	- Include several applications into the main suite:
 	  lavaMD, Gaussian Elimination, Pathfinder, k-Nearest Neighbor and Particle Filter. 

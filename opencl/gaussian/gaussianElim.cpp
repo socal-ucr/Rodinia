@@ -91,17 +91,17 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
     float writeTime=0,readTime=0,kernelTime=0;
     float writeMB=0,readMB=0;
     
-    gaussianElim_program = cl_CompileProgram(
+    gaussianElim_program = cl_compileProgram(
         (char *)"gaussianElim_kernels.cl",NULL);
    
     fan1_kernel = clCreateKernel(
         gaussianElim_program, "Fan1", &status);
-    status = cl_errChk(status, (char *)"Error Creating Fan1 kernel");
+    status = cl_errChk(status, (char *)"Error Creating Fan1 kernel",true);
     if(status)exit(1);
    
     fan2_kernel = clCreateKernel(
         gaussianElim_program, "Fan2", &status);
-    status = cl_errChk(status, (char *)"Error Creating Fan2 kernel");
+    status = cl_errChk(status, (char *)"Error Creating Fan2 kernel",true);
     if(status)exit(1);
     
     // 2. set up memory on device and send ipts data to device
@@ -178,7 +178,7 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
         argchk |= clSetKernelArg(fan1_kernel, 3, sizeof(int), (void *)&size);
         argchk |= clSetKernelArg(fan1_kernel, 4, sizeof(int), (void *)&t);
     
-        cl_errChk(argchk,"ERROR in Setting Fan1 kernel args");
+        cl_errChk(argchk,"ERROR in Setting Fan1 kernel args",true);
         
         // launch kernel
         error = clEnqueueNDRangeKernel(
@@ -186,7 +186,7 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
                   globalWorksizeFan1,NULL,
                   0, NULL, &kernelEvent);
 
-        cl_errChk(error,"ERROR in Executing Fan1 Kernel");
+        cl_errChk(error,"ERROR in Executing Fan1 Kernel",true);
         if (timing) {
 //             printf("here1a\n");
              kernelTime+=eventTime(kernelEvent,command_queue);
@@ -203,7 +203,7 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
         argchk |= clSetKernelArg(fan2_kernel, 3, sizeof(int), (void *)&size);
         argchk |= clSetKernelArg(fan2_kernel, 4, sizeof(int), (void *)&t);
     
-        cl_errChk(argchk,"ERROR in Setting Fan2 kernel args");
+        cl_errChk(argchk,"ERROR in Setting Fan2 kernel args",true);
         
         // launch kernel
         error = clEnqueueNDRangeKernel(
@@ -211,7 +211,7 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
                   globalWorksizeFan2,NULL,
                   0, NULL, &kernelEvent);
 
-        cl_errChk(error,"ERROR in Executing Fan1 Kernel");
+        cl_errChk(error,"ERROR in Executing Fan1 Kernel",true);
         if (timing) {
 //             printf("here2a\n");
              kernelTime+=eventTime(kernelEvent,command_queue);
@@ -232,7 +232,7 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
         NULL,
         &readEvent);
 
-    cl_errChk(error,"ERROR with clEnqueueReadBuffer");
+    cl_errChk(error,"ERROR with clEnqueueReadBuffer",true);
     if (timing) readTime+=eventTime(readEvent,command_queue);
     clReleaseEvent(readEvent);
     
@@ -245,7 +245,7 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
         0,
         NULL,
         &readEvent);
-    cl_errChk(error,"ERROR with clEnqueueReadBuffer");
+    cl_errChk(error,"ERROR with clEnqueueReadBuffer",true);
     if (timing) readTime+=eventTime(readEvent,command_queue);
     clReleaseEvent(readEvent);
     
@@ -259,7 +259,7 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
         NULL,
         &readEvent);
 
-    cl_errChk(error,"ERROR with clEnqueueReadBuffer");
+    cl_errChk(error,"ERROR with clEnqueueReadBuffer",true);
     if (timing) readTime+=eventTime(readEvent,command_queue);
     clReleaseEvent(readEvent);
     readMB = (float)(sizeof(float) * size * (size + size + 1) / 1e6);
@@ -287,10 +287,10 @@ float eventTime(cl_event event,cl_command_queue command_queue){
     clFinish(command_queue);
     error = clGetEventProfilingInfo(event,CL_PROFILING_COMMAND_START,
                                     sizeof(cl_ulong),&eventStart,NULL);
-    cl_errChk(error,"ERROR in Event Profiling."); 
+    cl_errChk(error,"ERROR in Event Profiling.",true); 
     error = clGetEventProfilingInfo(event,CL_PROFILING_COMMAND_END,
                                     sizeof(cl_ulong),&eventEnd,NULL);
-    cl_errChk(error,"ERROR in Event Profiling.");
+    cl_errChk(error,"ERROR in Event Profiling.",true);
 
     return (float)((eventEnd-eventStart)/1e9);
 }

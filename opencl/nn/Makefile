@@ -3,7 +3,7 @@ include ../../common/make.config
 #C compiler
 CC = g++
 
-SRC = nearestNeighbor.cpp clutils.cpp
+SRC = nearestNeighbor.cpp clutils.cpp utils.cpp
 
 CC_FLAGS = -g -O3
 

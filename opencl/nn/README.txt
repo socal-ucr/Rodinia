@@ -1,5 +1,3 @@
-Currently, the CUDA and OpenCL versions of NN are implemented differently.  We will fix this by including comparable versions.
-
 The Nearest Neighbor application computes the nearest location to a specific 
 latitude and longitude for a number of hurricanes (data from: http://weather.unisys.com/hurricane/).
 

@@ -14,9 +14,6 @@ __kernel void NearestNeighbor(__global LatLong *d_locations,
 	 int globalId = get_global_id(0);
 							  
      if (globalId < numRecords) {
-         int groupId = get_group_id(0);
-    	 int localId = get_local_id(0);
-	     int localSize = get_local_size(0);
          __global LatLong *latLong = d_locations+globalId;
     
          __global float *dist=d_distances+globalId;

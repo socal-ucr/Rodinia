@@ -3,7 +3,7 @@ include ../../common/make.config
 #C compiler
 CC = g++
 
-SRC = clutils.cpp gaussianElim.cpp
+SRC = clutils.cpp gaussianElim.cpp utils.cpp
 
 CC_FLAGS = -g -O3
 

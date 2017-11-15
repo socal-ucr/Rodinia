@@ -42,7 +42,7 @@ Gaussian Elimination Usage
     gaussianElimination [filename] [-hqt] [-p [int] -d [int]]
     
     example:
-    $ ./gaussianElimination ../../data/gaussian/matrix4.txt
+    $ ./gaussianElimination matrix4.txt
     
     filename     the filename that holds the matrix data
     
