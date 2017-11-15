@@ -494,11 +494,12 @@ void particleFilter(int * I, int IszX, int IszY, int Nfr, int * seed, int Nparti
 		}
 		long long xyj_time = get_time();
 		printf("TIME TO CALC NEW ARRAY X AND Y TOOK: %f\n", elapsed_time(u_time, xyj_time));
-		//reassign arrayX and arrayY
-		arrayX = xj;
-		arrayY = yj;
+		
 		//#pragma omp parallel for shared(weights, Nparticles) private(x)
 		for(x = 0; x < Nparticles; x++){
+			//reassign arrayX and arrayY
+			arrayX[x] = xj[x];
+			arrayY[x] = yj[x];
 			weights[x] = 1/((double)(Nparticles));
 		}
 		long long reset = get_time();
@@ -508,6 +509,8 @@ void particleFilter(int * I, int IszX, int IszY, int Nfr, int * seed, int Nparti
 	free(objxy);
 	free(weights);
 	free(likelihood);
+	free(xj);
+	free(yj);
 	free(arrayX);
 	free(arrayY);
 	free(CDF);

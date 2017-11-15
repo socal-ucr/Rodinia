@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <float.h>
 #include <sys/time.h>
+#include <CL/cl.h>
 #define PI acos(-1)
 #define BLOCK_X 16
 #define BLOCK_Y 16
@@ -44,8 +45,7 @@ double gettime() {
 }
 #endif
 
-//#include "oclUtils.h"
-#include <CL/cl.h>
+
 
 #ifndef FLT_MAX
 #define FLT_MAX 3.40282347e+38

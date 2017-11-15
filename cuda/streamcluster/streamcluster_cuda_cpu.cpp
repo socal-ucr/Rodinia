@@ -17,39 +17,30 @@
 
 using namespace std;
 
-#define MAXNAMESIZE 1024 	// max filename length
+#define MAXNAMESIZE 1024 			// max filename length
 #define SEED 1
-/* increase this to reduce probability of random error */
-/* increasing it also ups running time of "speedy" part of the code */
-/* SP = 1 seems to be fine */
-#define SP 1 							// number of repetitions of speedy must be >=1
-
-/* higher ITER --> more likely to get correct # of centers */
-/* higher ITER also scales the running time almost linearly */
+#define SP 1 						// number of repetitions of speedy must be >=1
 #define ITER 3 						// iterate ITER* k log k times; ITER >= 1
+//#define PRINTINFO 				// Enables printing output
+#define PROFILE 					// Enables timing info
+//#define ENABLE_THREADS			// Enables parallel execution
+//#define INSERT_WASTE				// Enables waste computation in dist function
+#define CACHE_LINE 512				// cache line in byte
 
-//#define PRINTINFO 			//comment this out to disable output
-#define PROFILE 					// comment this out to disable instrumentation code
-//#define ENABLE_THREADS  // comment this out to disable threads
-//#define INSERT_WASTE 		//uncomment this to insert waste computation into dist function
+// GLOBAL
+static bool *switch_membership;		//whether to switch membership in pgain
+static bool *is_center;				//whether a point is a center
+static int  *center_table;			//index table of centers
+static int nproc; 					//# of threads
+bool isCoordChanged;
 
-#define CACHE_LINE 512 		// cache line in byte
-
-
-/* global */
-static bool *switch_membership;	//whether to switch membership in pgain
-static bool *is_center;						//whether a point is a center
-static int  *center_table;					//index table of centers
-
-static int nproc; 								//# of threads
-
-/* timing info */
-static double serial;
-static double cpu_gpu_memcpy;
-static double memcpy_back;
-static double gpu_malloc;
-static double kernel;
-static double gpu_free;
+// GPU Timing Info
+double serial_t;
+double cpu_to_gpu_t;
+double gpu_to_cpu_t;
+double alloc_t;
+double kernel_t;
+double free_t;
 
 // instrumentation code
 #ifdef PROFILE
@@ -349,12 +340,13 @@ float pFL(Points *points, int *feasible, int numfeasible,
 #ifdef ENABLE_THREADS
     pthread_barrier_wait(barrier);
 #endif
+	
     for (i=0;i<iter;i++) {
 	    x = i%numfeasible;
-	    change += pgain(feasible[x], points, z, k, kmax, is_center, center_table, switch_membership,
-												&serial, &cpu_gpu_memcpy, &memcpy_back, &gpu_malloc, &kernel);
+	    change += pgain(feasible[x], points, z, k, kmax, is_center, center_table, switch_membership, isCoordChanged,
+						&serial_t, &cpu_to_gpu_t, &gpu_to_cpu_t, &alloc_t, &kernel_t, &free_t);
     }		
-		
+	
     cost -= change;
 #ifdef PRINTINFO
     if( pid == 0 ) {
@@ -632,7 +624,7 @@ int contcenters(Points *points)
 {
   long i, ii;
   float relweight;
-
+	
   for (i=0;i<points->num;i++) {
     /* compute relative weight of this point to the cluster */
     if (points->p[i].assign != i) {
@@ -815,15 +807,18 @@ void streamCluster( PStream* stream,
     center_table = (int*)malloc(points.num*sizeof(int));
 
     localSearch(&points,kmin, kmax,&kfinal);
-
+	
     fprintf(stderr,"finish local search\n");
+	
     contcenters(&points);
+	isCoordChanged = true;
+	
     if( kfinal + centers.num > centersize ) {
       //here we don't handle the situation where # of centers gets too large. 
       fprintf(stderr,"oops! no more space for centers\n");
       exit(1);
     }
-
+	
 #ifdef PRINTINFO
     printf("finish cont center\n");
 #endif
@@ -834,11 +829,11 @@ void streamCluster( PStream* stream,
 #ifdef PRINTINFO
     printf("finish copy centers\n"); 
 #endif
-
+	
     free(is_center);
     free(switch_membership);
     free(center_table);
-
+	
     if( stream->feof() ) {
       break;
     }
@@ -848,7 +843,7 @@ void streamCluster( PStream* stream,
   switch_membership = (bool*)malloc(centers.num*sizeof(bool));
   is_center = (bool*)calloc(centers.num,sizeof(bool));
   center_table = (int*)malloc(centers.num*sizeof(int));
-
+  
   localSearch( &centers, kmin, kmax ,&kfinal );
   contcenters(&centers);
   outcenterIDs( &centers, centerIDs, outfile);
@@ -914,44 +909,46 @@ int main(int argc, char **argv)
   __parsec_roi_begin();
 #endif
 
-	serial = 0.0;
-	cpu_gpu_memcpy = 0.0;
-	gpu_malloc = 0.0;
-	gpu_free = 0.0;
-	kernel = 0.0;
+	serial_t = 0.0;
+	cpu_to_gpu_t = 0.0;
+	gpu_to_cpu_t = 0.0;
+	alloc_t = 0.0;
+	free_t = 0.0;
+	kernel_t = 0.0;
+	
+	isCoordChanged = false;
 	
   streamCluster(stream, kmin, kmax, dim, chunksize, clustersize, outfilename );
-	
-	gpu_free = gettime();
+
 	freeDevMem();
-	gpu_free = gettime() - gpu_free;
-	
+	freeHostMem();
+
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
 
   double t2 = gettime();
 
-  printf("time = %lf\n",t2-t1);
+  printf("time = %lfs\n",t2-t1);
 
   delete stream;
   
 #ifdef PROFILE
-  printf("time pgain = %lf\n", time_gain);
-  printf("time pgain_dist = %lf\n", time_gain_dist);
-  printf("time pgain_init = %lf\n", time_gain_init);
-  printf("time pselect = %lf\n", time_select_feasible);
-  printf("time pspeedy = %lf\n", time_speedy);
-  printf("time pshuffle = %lf\n", time_shuffle);
-  printf("time localSearch = %lf\n", time_local_search);
-	printf("\n");
-	printf("====GPU Timing info====\n");
-	printf("time serial = %lf\n", serial);
-	printf("time CPU to GPU memory copy = %lf\n", cpu_gpu_memcpy);
-	printf("time GPU to CPU memory copy back = %lf\n", memcpy_back);
-	printf("time GPU malloc = %lf\n", gpu_malloc);
-	printf("time GPU free = %lf\n", gpu_free);
-	printf("time kernel = %lf\n", kernel);
+  printf("time pgain = %lfs\n", time_gain);
+  printf("time pgain_dist = %lfs\n", time_gain_dist);
+  printf("time pgain_init = %lfs\n", time_gain_init);
+  printf("time pselect = %lfs\n", time_select_feasible);
+  printf("time pspeedy = %lfs\n", time_speedy);
+  printf("time pshuffle = %lfs\n", time_shuffle);
+  printf("time localSearch = %lfs\n", time_local_search);
+  printf("\n\n");
+  printf("====CUDA Timing info (pgain)====\n");
+  printf("time serial = %lfs\n", serial_t/1000);
+  printf("time CPU to GPU memory copy = %lfs\n", cpu_to_gpu_t/1000);
+  printf("time GPU to CPU memory copy back = %lfs\n", gpu_to_cpu_t/1000);
+  printf("time GPU malloc = %lfs\n", alloc_t/1000);
+  printf("time GPU free = %lfs\n", free_t/1000);
+  printf("time kernel = %lfs\n", kernel_t/1000);
  #endif
   
 #ifdef ENABLE_PARSEC_HOOKS

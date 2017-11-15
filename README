@@ -1,4 +1,4 @@
-Rodinia Benchmark Suite 2.0
+Rodinia Benchmark Suite 2.1
 ===========================
 
 I. Overview
@@ -10,18 +10,18 @@ II. Usage
 
 1. Pakage Structure
 
-rodinia_2.0/bin		: binary executables
-rodinia_2.0/common	: common configuration file
-rodinia_2.0/cuda	: source code for the CUDA implementations
-rodinia_2.0/data	: input files (run ./get_data.sh to get these files)
-rodinia_2.0/openmp	: source code for the OpenMP implementations
-rodinia_2.0/opencl	: source code for the OpenCL implementations
+rodinia_2.1/bin		: binary executables
+rodinia_2.1/common	: common configuration file
+rodinia_2.1/cuda	: source code for the CUDA implementations
+rodinia_2.1/data	: input files (run ./get_data.sh to get these files)
+rodinia_2.1/openmp	: source code for the OpenMP implementations
+rodinia_2.1/opencl	: source code for the OpenCL implementations
 
 2. Build Rodinia
 
 Install the CUDA/OCL drivers, SDK and toolkit on your machine. 
 
-Modify the rodinia_2.0/common/make.config file to change the settings of rodinia home directory and CUDA/OCL library paths.
+Modify the rodinia_2.1/common/make.config file to change the settings of rodinia home directory and CUDA/OCL library paths.
 
 To compile all the programs of the Rodinia benchmark suite, simply use the universal make file to compile all the programs, or go to each 
 benchmark directory and make individual programs. 
@@ -32,6 +32,8 @@ There is a 'run' file specifying the sample command to run each program.
 
 IV. Change Log
 
+June 27, 2012: Rodinia 2.1 is released
+	- Include fixes for SRAD, Heartwall, Particle Filter and Streamcluster
 Nov 23, 2011: Rodinia 2.0.1 is released
 	- Include a CUDA version of NN comparable to the OCL version.
 	- Use a new version of clutils that is BSD, not GPL.

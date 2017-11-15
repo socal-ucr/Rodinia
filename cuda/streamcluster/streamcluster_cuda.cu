@@ -5,288 +5,376 @@
 	- original code from PARSEC Benchmark Suite
 	- parallelization with CUDA API has been applied by
 	
-	Sang-Ha (a.k.a Shawn) Lee - sl4ge@virginia.edu
+	Shawn Sang-Ha Lee - sl4ge@virginia.edu
 	University of Virginia
 	Department of Electrical and Computer Engineering
 	Department of Computer Science
 	
 ***********************************************/
-
-/* For a given point x, find the cost of the following operation:
- * -- open a facility at x if there isn't already one there,
- * -- for points y such that the assignment distance of y exceeds dist(y, x),
- *    make y a member of x,
- * -- for facilities y such that reassigning y and all its members to x 
- *    would save cost, realize this closing and reassignment.
- * 
- * If the cost of this operation is negative (i.e., if this entire operation
- * saves cost), perform this operation and return the amount of cost saved;
- * otherwise, do nothing.
- */
-
-/* numcenters will be updated to reflect the new number of centers */
-/* z is the facility cost, x is the number of this point in the array 
-   points */	 
-
 #include "streamcluster_header.cu"
 
 using namespace std;
 
+// AUTO-ERROR CHECK FOR ALL CUDA FUNCTIONS
+#define CUDA_SAFE_CALL( call) do {										\
+   cudaError err = call;												\
+   if( cudaSuccess != err) {											\
+       fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",	\
+               __FILE__, __LINE__, cudaGetErrorString( err) );			\
+   exit(EXIT_FAILURE);													\
+   } } while (0)
+
 #define THREADS_PER_BLOCK 512
 #define MAXBLOCKS 65536
-#define PROFILE
+#define CUDATIME
 
-/* host memory analogous to device memory */
+// host memory
 float *work_mem_h;
-static float *coord_h;
-float *gl_lower;
-Point *p;
+float *coord_h;
 
-/* device memory */
+// device memory
 float *work_mem_d;
 float *coord_d;
-int  *center_table_d;
+int   *center_table_d;
 bool  *switch_membership_d;
+Point *p;
 
-static int c;			// counters
+static int iter = 0;		// counter for total# of iteration
 
-/* kernel */
+
+//=======================================
+// Euclidean Distance
+//=======================================
+__device__ float
+d_dist(int p1, int p2, int num, int dim, float *coord_d)
+{
+	float retval = 0.0;
+	for(int i = 0; i < dim; i++){
+		float tmp = coord_d[(i*num)+p1] - coord_d[(i*num)+p2];
+		retval += tmp * tmp;
+	}
+	return retval;
+}
+
+//=======================================
+// Kernel - Compute Cost
+//=======================================
 __global__ void
-pgain_kernel(	int num,
-						int dim,
-						long x,
-						Point *p,
-						int K,
-						float *coord_d,
-						float *work_mem_d,			
-						int *center_table_d,
-						bool *switch_membership_d
-					)
-{	
-	/* block ID and global thread ID */
-	const int block_id  = blockIdx.x + gridDim.x * blockIdx.y;
-	const int thread_id = blockDim.x * block_id + threadIdx.x;
+kernel_compute_cost(int num, int dim, long x, Point *p, int K, int stride,
+					float *coord_d, float *work_mem_d, int *center_table_d, bool *switch_membership_d)
+{
+	// block ID and global thread ID
+	const int bid  = blockIdx.x + gridDim.x * blockIdx.y;
+	const int tid = blockDim.x * bid + threadIdx.x;
+
+	if(tid < num)
+	{
+		float *lower = &work_mem_d[tid*stride];
 		
-	extern __shared__ float coord_s[];							// shared memory for coordinate of point[x]
-	
-	/* coordinate mapping of point[x] to shared mem */
-	if(threadIdx.x == 0)
-		for(int i=0; i<dim; i++) { coord_s[i] = coord_d[i*num + x]; }
-	__syncthreads();
-	
-	/* cost between this point and point[x]: euclidean distance multiplied by weight */
-	float x_cost = 0.0;
-	for(int i=0; i<dim; i++)
-		x_cost += (coord_d[(i*num)+thread_id]-coord_s[i]) * (coord_d[(i*num)+thread_id]-coord_s[i]);
-	x_cost = x_cost * p[thread_id].weight;
-	
-	float current_cost = p[thread_id].cost;
-	
-	/* if computed cost is less then original (it saves), mark it as to reassign */
-	float *lower = &work_mem_d[thread_id*(K+1)];
-	if ( x_cost < current_cost ) {
-		switch_membership_d[thread_id] = 1;
-	    lower[K] += x_cost - current_cost;
-	}
-	/* if computed cost is larger, save the difference */
-	else {
-	    int assign = p[thread_id].assign;
-	    lower[center_table_d[assign]] += current_cost - x_cost;
-	}
-}
-
-void quit(char *message){
-	printf("%s\n", message);
-	exit(1);
-}
-
-void allocDevMem(int num, int dim, int kmax){
-	if( cudaMalloc((void**) &work_mem_d,  kmax * num * sizeof(float))!= cudaSuccess) quit("error allocating device memory");	
-	if( cudaMalloc((void**) &center_table_d,  num * sizeof(int))!= cudaSuccess) quit("error allocating device memory");
-	if( cudaMalloc((void**) &switch_membership_d,  num * sizeof(bool))!= cudaSuccess) quit("error allocating device memory");
-	if( cudaMalloc((void**) &p,  num * sizeof(Point))!= cudaSuccess) quit("error allocating device memory");
-	if( cudaMalloc((void**) &coord_d,  num * dim * sizeof(float))!= cudaSuccess) quit("error allocating device memory");
-}
-
-void freeDevMem(){	
-	cudaFree(work_mem_d);
-	cudaFree(center_table_d);
-	cudaFree(switch_membership_d);	
-	cudaFree(p);
-	cudaFree(coord_d);
-	cudaFreeHost(work_mem_h);
-	free(coord_h);
-	free(gl_lower);
-}
-
-float pgain( long x, Points *points, float z, long int *numcenters, int kmax, bool *is_center, int *center_table, bool *switch_membership,
-							double *serial, double *cpu_gpu_memcpy, double *memcpy_back, double *gpu_malloc, double *kernel)
-{	
-	cudaSetDevice(0);
-#ifdef PROFILE
-	double t1 = gettime();
-#endif
-	int K	= *numcenters ;						// number of centers
-	int num    =   points->num;				// number of points
-	int dim     =   points->dim;				// number of dimension
-	kmax++;
-	
-	
-	
-	/***** build center index table *****/
-	int count = 0;
-	for( int i=0; i<num; i++){
-		if( is_center[i] )
-			center_table[i] = count++;
-	}
-	
-#ifdef PROFILE
-	double t2 = gettime();
-	*serial += t2 - t1;
-#endif
-	
-	
-	/***** initial memory allocation and preparation for transfer : execute once *****/
-	if( c == 0 ) {
-#ifdef PROFILE
-		double t3 = gettime();
-#endif
-		allocDevMem(num, dim, kmax);
-#ifdef PROFILE
-		double t4 = gettime();
-		*gpu_malloc += t4 - t3;
-#endif
+		// cost between this point and point[x]: euclidean distance multiplied by weight
+		float x_cost = d_dist(tid, x, num, dim, coord_d) * p[tid].weight;
 		
-		coord_h = (float*) malloc( num * dim * sizeof(float));								// coordinates (host)
-		gl_lower = (float*) malloc( kmax * sizeof(float) );
-		cudaMallocHost( (void**)&work_mem_h,  kmax * num * sizeof(float) );
-		
-		/* prepare mapping for point coordinates */
-		for(int i=0; i<dim; i++){
-			for(int j=0; j<num; j++)
-				coord_h[ (num*i)+j ] = points->p[j].coord[i];
+		// if computed cost is less then original (it saves), mark it as to reassign
+		if ( x_cost < p[tid].cost )
+		{
+			switch_membership_d[tid] = 1;
+			lower[K] += x_cost - p[tid].cost;
 		}
-#ifdef PROFILE		
-		double t5 = gettime();
-		*serial += t5 - t4;
+		// if computed cost is larger, save the difference
+		else
+		{
+			lower[center_table_d[p[tid].assign]] += p[tid].cost - x_cost;
+		}
+	}
+}
+
+//=======================================
+// Allocate Device Memory
+//=======================================
+void allocDevMem(int num, int dim)
+{
+	CUDA_SAFE_CALL( cudaMalloc((void**) &center_table_d,	  num * sizeof(int))   );
+	CUDA_SAFE_CALL( cudaMalloc((void**) &switch_membership_d, num * sizeof(bool))  );
+	CUDA_SAFE_CALL( cudaMalloc((void**) &p,					  num * sizeof(Point)) );
+	CUDA_SAFE_CALL( cudaMalloc((void**) &coord_d,		num * dim * sizeof(float)) );
+}
+
+//=======================================
+// Allocate Host Memory
+//=======================================
+void allocHostMem(int num, int dim)
+{
+	coord_h	= (float*) malloc( num * dim * sizeof(float) );
+}
+
+//=======================================
+// Free Device Memory
+//=======================================
+void freeDevMem()
+{
+	CUDA_SAFE_CALL( cudaFree(center_table_d)	  );
+	CUDA_SAFE_CALL( cudaFree(switch_membership_d) );
+	CUDA_SAFE_CALL( cudaFree(p)					  );
+	CUDA_SAFE_CALL( cudaFree(coord_d)			  );
+}
+
+//=======================================
+// Free Host Memory
+//=======================================
+void freeHostMem()
+{
+	free(coord_h);
+}
+
+//=======================================
+// pgain Entry - CUDA SETUP + CUDA CALL
+//=======================================
+float pgain( long x, Points *points, float z, long int *numcenters, int kmax, bool *is_center, int *center_table, bool *switch_membership, bool isCoordChanged,
+							double *serial_t, double *cpu_to_gpu_t, double *gpu_to_cpu_t, double *alloc_t, double *kernel_t, double *free_t)
+{	
+#ifdef CUDATIME
+	float tmp_t;
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	
+	cudaEventRecord(start, 0);
 #endif
-		/* copy coordinate to device memory */
-		cudaMemcpy( switch_membership_d,  switch_membership,  num*sizeof(bool),  cudaMemcpyHostToDevice);
-		cudaMemcpy( coord_d,  coord_h,  num*dim*sizeof(float),  cudaMemcpyHostToDevice);
-#ifdef PROFILE
-		double t6 = gettime();
-		*cpu_gpu_memcpy += t6 - t5;
+
+	cudaError_t error;
+	
+	int stride	= *numcenters + 1;			// size of each work_mem segment
+	int K		= *numcenters ;				// number of centers
+	int num		=  points->num;				// number of points
+	int dim		=  points->dim;				// number of dimension
+	int nThread =  num;						// number of threads == number of data points
+	
+	//=========================================
+	// ALLOCATE HOST MEMORY + DATA PREPARATION
+	//=========================================
+	work_mem_h = (float*) malloc(stride * (nThread + 1) * sizeof(float) );
+	// Only on the first iteration
+	if(iter == 0)
+	{
+		allocHostMem(num, dim);
+	}
+	
+	// build center-index table
+	int count = 0;
+	for( int i=0; i<num; i++)
+	{
+		if( is_center[i] )
+		{
+			center_table[i] = count++;
+		}
+	}
+
+	// Extract 'coord'
+	// Only if first iteration OR coord has changed
+	if(isCoordChanged || iter == 0)
+	{
+		for(int i=0; i<dim; i++)
+		{
+			for(int j=0; j<num; j++)
+			{
+				coord_h[ (num*i)+j ] = points->p[j].coord[i];
+			}
+		}
+	}
+	
+#ifdef CUDATIME
+	cudaEventRecord(stop,0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&tmp_t, start, stop);
+	*serial_t += (double) tmp_t;
+	
+	cudaEventRecord(start,0);
 #endif
-	}	
+
+	//=======================================
+	// ALLOCATE GPU MEMORY
+	//=======================================
+	CUDA_SAFE_CALL( cudaMalloc((void**) &work_mem_d,  stride * (nThread + 1) * sizeof(float)) );
+	// Only on the first iteration
+	if( iter == 0 )
+	{
+		allocDevMem(num, dim);
+	}
 	
-#ifdef PROFILE
-	double t7 = gettime();
+#ifdef CUDATIME
+	cudaEventRecord(stop,0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&tmp_t, start, stop);
+	*alloc_t += (double) tmp_t;
+	
+	cudaEventRecord(start,0);
+#endif
+
+	//=======================================
+	// CPU-TO-GPU MEMORY COPY
+	//=======================================
+	// Only if first iteration OR coord has changed
+	if(isCoordChanged || iter == 0)
+	{
+		CUDA_SAFE_CALL( cudaMemcpy(coord_d,  coord_h,	 num * dim * sizeof(float), cudaMemcpyHostToDevice) );
+	}
+	CUDA_SAFE_CALL( cudaMemcpy(center_table_d,  center_table,  num * sizeof(int),   cudaMemcpyHostToDevice) );
+	CUDA_SAFE_CALL( cudaMemcpy(p,  points->p,				   num * sizeof(Point), cudaMemcpyHostToDevice) );
+	
+	CUDA_SAFE_CALL( cudaMemset((void*) switch_membership_d, 0,			num * sizeof(bool))  );
+	CUDA_SAFE_CALL( cudaMemset((void*) work_mem_d,  		0, stride * (nThread + 1) * sizeof(float)) );
+	
+#ifdef CUDATIME
+	cudaEventRecord(stop,0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&tmp_t, start, stop);
+	*cpu_to_gpu_t += (double) tmp_t;
+	
+	cudaEventRecord(start,0);
 #endif
 	
-	
-	/***** memory transfer from host to device *****/
-	/* copy to device memory */
-	cudaMemcpy( center_table_d,  center_table,  num*sizeof(int),  cudaMemcpyHostToDevice);
-	cudaMemcpy( p,  points->p,  num * sizeof(Point),  cudaMemcpyHostToDevice);
-	/* initialize device memory */
-	cudaMemset( switch_membership_d, 0, num 		* sizeof(bool) );
-	cudaMemset( work_mem_d, 				0, kmax * num * sizeof(float) );
-	
-#ifdef PROFILE
-	double t8 = gettime();
-	*cpu_gpu_memcpy += t8 - t7;
-#endif
-	
-	
-	/***** kernel execution *****/
-	/* Determine the number of thread blocks in the x- and y-dimension */
+	//=======================================
+	// KERNEL: CALCULATE COST
+	//=======================================
+	// Determine the number of thread blocks in the x- and y-dimension
 	int num_blocks 	 = (int) ((float) (num + THREADS_PER_BLOCK - 1) / (float) THREADS_PER_BLOCK);
-	int num_blocks_y  = (int) ((float) (num_blocks + MAXBLOCKS - 1)    / (float) MAXBLOCKS);
-	int num_blocks_x  = (int) ((float) (num_blocks+num_blocks_y - 1)   / (float) num_blocks_y);	
+	int num_blocks_y = (int) ((float) (num_blocks + MAXBLOCKS - 1)  / (float) MAXBLOCKS);
+	int num_blocks_x = (int) ((float) (num_blocks+num_blocks_y - 1) / (float) num_blocks_y);	
 	dim3 grid_size(num_blocks_x, num_blocks_y, 1);
-	size_t smSize = dim * sizeof(float);
-#ifdef PROFILE
-	double t9 = gettime();
-#endif
-	pgain_kernel<<< grid_size, THREADS_PER_BLOCK,  smSize>>>(	
-																											num,								// in:	# of data
-																											dim,									// in:	dimension of point coordinates
-																											x,										// in:	point to open a center at
-																											p,										// out:	data point array
-																											K,										// in:	number of centers
-																											coord_d,							// in:	array of point coordinates
-																											work_mem_d,					// out:	cost and lower field array
-																											center_table_d,				// in:	center index table
-																											switch_membership_d		// out:  changes in membership
-																										  );
+
+	kernel_compute_cost<<<grid_size, THREADS_PER_BLOCK>>>(	
+															num,					// in:	# of data
+															dim,					// in:	dimension of point coordinates
+															x,						// in:	point to open a center at
+															p,						// in:	data point array
+															K,						// in:	number of centers
+															stride,					// in:  size of each work_mem segment
+															coord_d,				// in:	array of point coordinates
+															work_mem_d,				// out:	cost and lower field array
+															center_table_d,			// in:	center index table
+															switch_membership_d		// out:  changes in membership
+															);
 	cudaThreadSynchronize();
 	
-#ifdef PROFILE
-	double t10 = gettime();
-	*kernel += t10 - t9;
+	// error check
+	error = cudaGetLastError();
+	if (error != cudaSuccess)
+	{
+		printf("kernel error: %s\n", cudaGetErrorString(error));
+		exit(EXIT_FAILURE);
+	}
+	
+#ifdef CUDATIME
+	cudaEventRecord(stop,0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&tmp_t, start, stop);
+	*kernel_t += (double) tmp_t;
+	
+	cudaEventRecord(start,0);
 #endif
 	
+	//=======================================
+	// GPU-TO-CPU MEMORY COPY
+	//=======================================
+	CUDA_SAFE_CALL( cudaMemcpy(work_mem_h, 		  work_mem_d, 	stride * (nThread + 1) * sizeof(float), cudaMemcpyDeviceToHost) );
+	CUDA_SAFE_CALL( cudaMemcpy(switch_membership, switch_membership_d,	 num * sizeof(bool),  cudaMemcpyDeviceToHost) );
 	
-	/***** copy back to host for CPU side work *****/
-	cudaMemcpy(work_mem_h, work_mem_d, (K+1) *num*sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(switch_membership, switch_membership_d, num * sizeof(bool), cudaMemcpyDeviceToHost);
-
-#ifdef PROFILE
-	double t11 = gettime();
-	*memcpy_back += t11 - t10;
+#ifdef CUDATIME
+	cudaEventRecord(stop,0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&tmp_t, start, stop);
+	*gpu_to_cpu_t += (double) tmp_t;
+	
+	cudaEventRecord(start,0);
 #endif
 	
-	
-	/****** cpu side work *****/
-	int numclose = 0;
-	float gl_cost = z;
-	
-	/* compute the number of centers to close if we are to open i */
-	for(int i=0; i < num; i++){
-		if( is_center[i] ) {
+	//=======================================
+	// CPU (SERIAL) WORK
+	//=======================================
+	int number_of_centers_to_close = 0;
+	float gl_cost_of_opening_x = z;
+	float *gl_lower = &work_mem_h[stride * nThread];
+	// compute the number of centers to close if we are to open i
+	for(int i=0; i < num; i++)
+	{
+		if( is_center[i] )
+		{
 			float low = z;
-			
 		    for( int j = 0; j < num; j++ )
-				low += work_mem_h[ j*(K+1) + center_table[i] ];
-				
+			{
+				low += work_mem_h[ j*stride + center_table[i] ];
+			}
+			
 		    gl_lower[center_table[i]] = low;
 				
-		    if ( low > 0 ) {
-				numclose++;				
-				work_mem_h[i*(K+1)+K] -= low;
+		    if ( low > 0 )
+			{
+				++number_of_centers_to_close;
+				work_mem_h[i*stride+K] -= low;
 		    }
 		}
-		gl_cost += work_mem_h[i*(K+1)+K];
+		gl_cost_of_opening_x += work_mem_h[i*stride+K];
 	}
-	
-	
-	/* if opening a center at x saves cost (i.e. cost is negative) do so
-		otherwise, do nothing */
-	if ( gl_cost < 0 ) {
-		for(int i=0; i<num; i++){
-		
+
+	//if opening a center at x saves cost (i.e. cost is negative) do so; otherwise, do nothing
+	if ( gl_cost_of_opening_x < 0 )
+	{
+		for(int i = 0; i < num; i++)
+		{
 			bool close_center = gl_lower[center_table[points->p[i].assign]] > 0 ;
-		    if ( switch_membership[i] || close_center ) {
-				points->p[i].cost = points->p[i].weight * dist(points->p[i], points->p[x], points->dim);
+			if ( switch_membership[i] || close_center )
+			{
+				points->p[i].cost = dist(points->p[i], points->p[x], dim) * points->p[i].weight;
 				points->p[i].assign = x;
-		    }
-	    }
-		
-		for(int i=0; i<num; i++){
-			if( is_center[i] && gl_lower[center_table[i]] > 0 )
-				is_center[i] = false;
+			}
 		}
 		
-		is_center[x] = true;
-		*numcenters = *numcenters +1 - numclose;
+		for(int i = 0; i < num; i++)
+		{
+			if( is_center[i] && gl_lower[center_table[i]] > 0 )
+			{
+				is_center[i] = false;
+			}
+		}
+		
+		if( x >= 0 && x < num)
+		{
+			is_center[x] = true;
+		}
+		*numcenters = *numcenters + 1 - number_of_centers_to_close;
 	}
 	else
-		gl_cost = 0;  // the value we'
-
-#ifdef PROFILE
-	double t12 = gettime();
-	*serial += t12 - t11;
+	{
+		gl_cost_of_opening_x = 0;
+	}
+	
+	//=======================================
+	// DEALLOCATE HOST MEMORY
+	//=======================================
+	free(work_mem_h);
+	
+	
+#ifdef CUDATIME
+	cudaEventRecord(stop,0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&tmp_t, start, stop);
+	*serial_t += (double) tmp_t;
+	
+	cudaEventRecord(start,0);
 #endif
-	c++;
-	return -gl_cost;
+
+	//=======================================
+	// DEALLOCATE GPU MEMORY
+	//=======================================
+	CUDA_SAFE_CALL( cudaFree(work_mem_d) );
+	
+	
+#ifdef CUDATIME
+	cudaEventRecord(stop,0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&tmp_t, start, stop);
+	*free_t += (double) tmp_t;
+#endif
+	iter++;
+	return -gl_cost_of_opening_x;
 }

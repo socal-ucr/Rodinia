@@ -55,7 +55,7 @@ using namespace std;
 #define ITER 3 // iterate ITER* k log k times; ITER >= 1
 
 //#define PRINTINFO //comment this out to disable output
-//#define PROFILE // comment this out to disable instrumentation code
+#define PROFILE // comment this out to disable instrumentation code
 //#define ENABLE_THREADS  // comment this out to disable threads
 //#define INSERT_WASTE //uncomment this to insert waste computation into dist function
 
@@ -538,7 +538,7 @@ double pgain(long x, Points *points, double z, long int *numcenters, int pid, pt
 #endif
   // Now, check whether opening x would save cost; if so, do it, and
   // otherwise do nothing
-
+	
   if ( gl_cost_of_opening_x < 0 ) {
     //  we'd save money by opening x; we'll do it
     for ( int i = k1; i < k2; i++ ) {
@@ -585,6 +585,7 @@ double pgain(long x, Points *points, double z, long int *numcenters, int pid, pt
   if( pid==0 )
   time_gain += t3-t0;
 #endif
+	
   return -gl_cost_of_opening_x;
 }
 
@@ -622,6 +623,7 @@ float pFL(Points *points, int *feasible, int numfeasible,
 #ifdef ENABLE_THREADS
     pthread_barrier_wait(barrier);
 #endif
+	
     for (i=0;i<iter;i++) {
       x = i%numfeasible;
       change += pgain(feasible[x], points, z, k, pid, barrier);
