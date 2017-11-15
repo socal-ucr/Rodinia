@@ -1,0 +1,49 @@
+Rodinia Benchmark Suite 1.0
+===========================
+
+I. Overview
+
+The University of Virginia Rodinia Benchmark Suite is a collection of parallel programs which targets 
+heterogeneous computing platforms with both multicore CPUs and various accelerators included.
+
+The Rodinia suite currently consists of five applications and seven kernels. They have been parallelized with 
+OpenMP for multicore CPUs and with the NVIDIA CUDA API for GPUs. The suite is structured to span a range of 
+parallelism and data-sharing characteristics.
+
+
+II. Usage
+
+1. Pakage Structure
+
+rodinia_1.0/bin		: binary executables
+rodinia_1.0/common	: common configuration file
+rodinia_1.0/cuda	: source code for the CUDA implementations
+rodinia_1.0/data	: input files (run ./get_data.sh to get these files)
+rodinia_1.0/openmp	: source code for the OpenMP implementations
+
+2. Build Rodinia
+
+Install the NVIDIA CUDA driver, SDK and toolkit on your machine. The programs have been tested under CUDA 2.2 and GCC 4.2.4  
+
+Modify the rodinia_1.0/common/make.config file to change the settings of rodinia home directory, CUDA toolkit path and CUDA SDK path.
+
+To compile all the programs of the Rodinia benchmark suite, simply use the universal make file to compile all the programs, or go to each 
+benchmark directory and make individual programs. Some programs also include a makefile for users who prefer to the NVIDIA style 
+make file to compile GPU programs.
+
+3. Run Rodinia
+
+There is a 'run' file specifying the sample command to run each program.
+
+IV. Change Log
+
+Mar 01, 2010: Rodinia 1.0 is released
+
+III. Contact
+
+Shuai Che: sc5nf@cs.virginia.edu
+Kevin Skadron: skadron@cs.virginia.edu
+
+Rodinia wiki: 
+
+http://lava.cs.virginia.edu/wiki/rodinia

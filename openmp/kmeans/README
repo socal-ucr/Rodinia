@@ -1,0 +1,2 @@
+kmeans_openmp:  the OpenMP implementation of kmeans
+kmeans_serial:	the single-threaded implementation of kmeans
