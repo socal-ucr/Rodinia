@@ -569,7 +569,8 @@ void particleFilter(int * I, int IszX, int IszY, int Nfr, int * seed, int Nparti
 		
 		//KERNEL FUNCTION CALL
 		kernel <<< num_blocks, threads_per_block >>> (arrayX_GPU, arrayY_GPU, CDF_GPU, u_GPU, xj_GPU, yj_GPU, Nparticles);
-		long long start_copy_back = get_time();
+                cudaThreadSynchronize();
+                long long start_copy_back = get_time();
 		//CUDA memory copying back from GPU to CPU memory
 		cudaMemcpy(yj, yj_GPU, sizeof(double)*Nparticles, cudaMemcpyDeviceToHost);
 		cudaMemcpy(xj, xj_GPU, sizeof(double)*Nparticles, cudaMemcpyDeviceToHost);
@@ -579,11 +580,11 @@ void particleFilter(int * I, int IszX, int IszY, int Nfr, int * seed, int Nparti
 		printf("SENDING BACK FROM GPU TOOK: %lf\n", elapsed_time(start_copy_back, end_copy_back));
 		long long xyj_time = get_time();
 		printf("TIME TO CALC NEW ARRAY X AND Y TOOK: %f\n", elapsed_time(u_time, xyj_time));
-		//reassign arrayX and arrayY
-		arrayX = xj;
-		arrayY = yj;
 		
 		for(x = 0; x < Nparticles; x++){
+			//reassign arrayX and arrayY
+			arrayX[x] = xj[x];
+			arrayY[x] = yj[x];
 			weights[x] = 1/((double)(Nparticles));
 		}
 		long long reset = get_time();
@@ -605,6 +606,8 @@ void particleFilter(int * I, int IszX, int IszY, int Nfr, int * seed, int Nparti
 	free(likelihood);
 	free(arrayX);
 	free(arrayY);
+	free(xj);
+	free(yj);
 	free(CDF);
 	free(u);
 	free(ind);

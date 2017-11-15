@@ -1,35 +1,30 @@
-Rodinia Benchmark Suite 1.0
+Rodinia Benchmark Suite 2.0
 ===========================
 
 I. Overview
 
 The University of Virginia Rodinia Benchmark Suite is a collection of parallel programs which targets 
-heterogeneous computing platforms with both multicore CPUs and various accelerators included.
-
-The Rodinia suite currently consists of five applications and seven kernels. They have been parallelized with 
-OpenMP for multicore CPUs and with the NVIDIA CUDA API for GPUs. The suite is structured to span a range of 
-parallelism and data-sharing characteristics.
-
+heterogeneous computing platforms with both multicore CPUs and GPUs.
 
 II. Usage
 
 1. Pakage Structure
 
-rodinia_1.0/bin		: binary executables
-rodinia_1.0/common	: common configuration file
-rodinia_1.0/cuda	: source code for the CUDA implementations
-rodinia_1.0/data	: input files (run ./get_data.sh to get these files)
-rodinia_1.0/openmp	: source code for the OpenMP implementations
+rodinia_2.0/bin		: binary executables
+rodinia_2.0/common	: common configuration file
+rodinia_2.0/cuda	: source code for the CUDA implementations
+rodinia_2.0/data	: input files (run ./get_data.sh to get these files)
+rodinia_2.0/openmp	: source code for the OpenMP implementations
+rodinia_2.0/opencl	: source code for the OpenCL implementations
 
 2. Build Rodinia
 
-Install the NVIDIA CUDA driver, SDK and toolkit on your machine. The programs have been tested under CUDA 2.2 and GCC 4.2.4  
+Install the CUDA/OCL drivers, SDK and toolkit on your machine. 
 
-Modify the rodinia_1.0/common/make.config file to change the settings of rodinia home directory, CUDA toolkit path and CUDA SDK path.
+Modify the rodinia_2.0/common/make.config file to change the settings of rodinia home directory and CUDA/OCL library paths.
 
 To compile all the programs of the Rodinia benchmark suite, simply use the universal make file to compile all the programs, or go to each 
-benchmark directory and make individual programs. Some programs also include a makefile for users who prefer to the NVIDIA style 
-make file to compile GPU programs.
+benchmark directory and make individual programs. 
 
 3. Run Rodinia
 
@@ -37,6 +32,11 @@ There is a 'run' file specifying the sample command to run each program.
 
 IV. Change Log
 
+Nov 11, 2011: Rodinia 2.0 is released
+	- Include several applications into the main suite:
+	  lavaMD, Gaussian Elimination, Pathfinder, k-Nearest Neighbor and Particle Filter. 
+	  Detailed application information can also be found at http://lava.cs.virginia.edu/wiki/rodinia
+	- Merge new OpenCL implementations into the main tarball.
 Mar 01, 2010: Rodinia 1.0 is released
 
 III. Contact

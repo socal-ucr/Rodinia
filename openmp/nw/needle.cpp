@@ -182,23 +182,18 @@ runTest( int argc, char** argv)
 
 	}
 
-#ifdef TRACE
-
-    printf("print traceback value CPU:\n");
+//#define TRACEBACK
+#ifdef TRACEBACK
 	
-    int i, j;
-	for (i = j = max_rows - 2; i>=0, j>=0;){
-
+	FILE *fpo = fopen("result.txt","w");
+	fprintf(fpo, "print traceback value GPU:\n");
+    
+	for (int i = max_rows - 2,  j = max_rows - 2; i>=0, j>=0;){
 		int nw, n, w, traceback;
-
 		if ( i == max_rows - 2 && j == max_rows - 2 )
-			printf("%d ", input_itemsets[ i * max_cols + j]); //print the first element
-            
-
+			fprintf(fpo, "%d ", input_itemsets[ i * max_cols + j]); //print the first element
 		if ( i == 0 && j == 0 )
            break;
-
-
 		if ( i > 0 && j > 0 ){
 			nw = input_itemsets[(i - 1) * max_cols + j - 1];
 		    w  = input_itemsets[ i * max_cols + j - 1 ];
@@ -215,9 +210,21 @@ runTest( int argc, char** argv)
 		else{
 		}
 
-		traceback = maximum(nw, w, n);
+		//traceback = maximum(nw, w, n);
+		int new_nw, new_w, new_n;
+		new_nw = nw + referrence[i * max_cols + j];
+		new_w = w - penalty;
+		new_n = n - penalty;
 		
-		printf("%d ", traceback);
+		traceback = maximum(new_nw, new_w, new_n);
+		if(traceback == new_nw)
+			traceback = nw;
+		if(traceback == new_w)
+			traceback = w;
+		if(traceback == new_n)
+            traceback = n;
+			
+		fprintf(fpo, "%d ", traceback);
 
 		if(traceback == nw )
 		{i--; j--; continue;}
@@ -231,10 +238,15 @@ runTest( int argc, char** argv)
 		else
 		;
 	}
+	
+	fclose(fpo);
 
 #endif
 
-	
+	free(referrence);
+	free(input_itemsets);
+	free(output_itemsets);
+
 }
 
 

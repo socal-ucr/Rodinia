@@ -447,7 +447,8 @@ double pgain(long x, Points *points, double z, long int *numcenters, int pid, pt
   double* gl_lower = &work_mem[nproc*stride];
 	
 	// OpenMP parallelization
-	#pragma omp parallel for
+//	#pragma omp parallel for 
+	#pragma omp parallel for reduction(+: cost_of_opening_x)
   for ( i = k1; i < k2; i++ ) {
     float x_cost = dist(points->p[i], points->p[x], points->dim) 
       * points->p[i].weight;
