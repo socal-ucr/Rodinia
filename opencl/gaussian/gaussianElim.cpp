@@ -4,6 +4,38 @@
 #include "gaussianElim.h"
 #include <math.h>
 
+#ifdef RD_WG_SIZE_0_0
+        #define BLOCK_SIZE_0 RD_WG_SIZE_0_0
+#elif defined(RD_WG_SIZE_0)
+        #define BLOCK_SIZE_0 RD_WG_SIZE_0
+#elif defined(RD_WG_SIZE)
+        #define BLOCK_SIZE_0 RD_WG_SIZE
+#else
+        #define BLOCK_SIZE_0 0
+#endif
+
+//2D defines. Go from specific to general                                                
+#ifdef RD_WG_SIZE_1_0
+        #define BLOCK_SIZE_1_X RD_WG_SIZE_1_0
+#elif defined(RD_WG_SIZE_1)
+        #define BLOCK_SIZE_1_X RD_WG_SIZE_1
+#elif defined(RD_WG_SIZE)
+        #define BLOCK_SIZE_1_X RD_WG_SIZE
+#else
+        #define BLOCK_SIZE_1_X 0
+#endif
+
+#ifdef RD_WG_SIZE_1_1
+        #define BLOCK_SIZE_1_Y RD_WG_SIZE_1_1
+#elif defined(RD_WG_SIZE_1)
+        #define BLOCK_SIZE_1_Y RD_WG_SIZE_1
+#elif defined(RD_WG_SIZE)
+        #define BLOCK_SIZE_1_Y RD_WG_SIZE
+#else
+        #define BLOCK_SIZE_1_Y 0
+#endif
+
+
 cl_context context=NULL;
 
 // create both matrix and right hand side, Ke Wang 2013/08/12 11:51:06
@@ -35,6 +67,8 @@ create_matrix(float *m, int size){
 
 
 int main(int argc, char *argv[]) {
+
+  printf("WG size of kernel 1 = %d, WG size of kernel 2= %d X %d\n", BLOCK_SIZE_0, BLOCK_SIZE_1_X, BLOCK_SIZE_1_Y);
     float *a=NULL, *b=NULL, *finalVec=NULL;
     float *m=NULL;
     int size = -1;
@@ -43,7 +77,7 @@ int main(int argc, char *argv[]) {
     
     // args
     char filename[200];
-    int quiet=0,timing=0,platform=-1,device=-1;
+    int quiet=1,timing=0,platform=-1,device=-1;
     
     // parse command line
     if (parseCommandline(argc, argv, filename,
@@ -217,11 +251,28 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
     // 3. Determine block sizes
     size_t globalWorksizeFan1[1];
     size_t globalWorksizeFan2[2];
-    
-	globalWorksizeFan1[0] = size;
-	globalWorksizeFan2[0] = size;
-	globalWorksizeFan2[1] = size;
-	
+    size_t localWorksizeFan1Buf[1]={BLOCK_SIZE_0};
+    size_t localWorksizeFan2Buf[2]={BLOCK_SIZE_1_X, BLOCK_SIZE_1_Y};
+    size_t *localWorksizeFan1=NULL;
+    size_t *localWorksizeFan2=NULL;
+
+        globalWorksizeFan1[0] = size;
+        globalWorksizeFan2[0] = size;
+        globalWorksizeFan2[1] = size;
+
+        if(localWorksizeFan1Buf[0]){
+                localWorksizeFan1=localWorksizeFan1Buf;
+                globalWorksizeFan1[0]=(int)ceil(globalWorksizeFan1[0]/(double)localWorks\
+izeFan1Buf[0])*localWorksizeFan1Buf[0];
+        }
+        if(localWorksizeFan2Buf[0]){
+                localWorksizeFan2=localWorksizeFan2Buf;
+                globalWorksizeFan2[0]=(int)ceil(globalWorksizeFan2[0]/(double)localWorks\
+izeFan2Buf[0])*localWorksizeFan2Buf[0];
+                globalWorksizeFan2[1]=(int)ceil(globalWorksizeFan2[1]/(double)localWorks\
+izeFan2Buf[1])*localWorksizeFan2Buf[1];
+        }
+
 	int t;
 	// 4. Setup and Run kernels
 	for (t=0; t<(size-1); t++) {
@@ -238,7 +289,7 @@ void ForwardSub(cl_context context, float *a, float *b, float *m, int size,int t
         // launch kernel
         error = clEnqueueNDRangeKernel(
                   command_queue,  fan1_kernel, 1, 0,
-                  globalWorksizeFan1,NULL,
+                  globalWorksizeFan1,localWorksizeFan1,
                   0, NULL, &kernelEvent);
 
         cl_errChk(error,"ERROR in Executing Fan1 Kernel",true);

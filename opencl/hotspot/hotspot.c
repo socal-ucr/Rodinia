@@ -143,6 +143,7 @@ void usage(int argc, char **argv) {
 
 int main(int argc, char** argv) {
 
+  printf("WG size of kernel = %d X %d\n", BLOCK_SIZE, BLOCK_SIZE);
 
 	cl_int error;
 	cl_uint num_platforms;
@@ -235,8 +236,15 @@ int main(int argc, char** argv) {
     cl_program program = clCreateProgramWithSource(context, 1, &source, &sourceSize, &error);
     if (error != CL_SUCCESS) fatal_CL(error, __LINE__);
 	
+	char clOptions[110];
+	//  sprintf(clOptions,"-I../../src"); 
+	sprintf(clOptions," ");
+#ifdef BLOCK_SIZE
+	sprintf(clOptions + strlen(clOptions), " -DBLOCK_SIZE=%d", BLOCK_SIZE);
+#endif
+
     // Create an executable from the kernel
-	error = clBuildProgram(program, 1, &device, NULL, NULL, NULL);
+	error = clBuildProgram(program, 1, &device, clOptions, NULL, NULL);
 	// Show compiler warnings/errors
 	static char log[65536]; memset(log, 0, sizeof(log));
 	clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, sizeof(log)-1, log, NULL);

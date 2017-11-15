@@ -59,3 +59,10 @@ Gaussian Elimination Usage
            2. If you declare either the device or the platform,
               you must declare both.
 
+******Adjustable work group size*****
+The kernel 2 has square shape 
+The actually dimension = RD_WG_SIZE_1_0 * RD_WG_SIZE_1_1
+
+USAGE:
+make clean
+make KERNEL_DIM="-DRD_WG_SIZE_0=128 -DRD_WG_SIZE_1=16 "

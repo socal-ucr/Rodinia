@@ -6,7 +6,7 @@
 
 
 // Defined if we want to use images/textures
-#define USE_IMAGE
+/* #define USE_IMAGE */
 
 
 // The number of sample points in each ellipse (stencil)

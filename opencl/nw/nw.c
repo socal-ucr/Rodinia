@@ -1,4 +1,13 @@
-#define BLOCK_SIZE 16 
+#ifdef RD_WG_SIZE_0_0
+	#define BLOCK_SIZE RD_WG_SIZE_0_0
+#elif defined(RD_WG_SIZE_0)
+	#define BLOCK_SIZE RD_WG_SIZE_0
+#elif defined(RD_WG_SIZE)
+	#define BLOCK_SIZE RD_WG_SIZE
+#else
+	#define BLOCK_SIZE 16
+#endif
+
 #define LIMIT -999
 
 #include <stdio.h>
@@ -129,6 +138,8 @@ double gettime() {
 
 int main(int argc, char **argv){
 
+  printf("WG size of kernel = %d \n", BLOCK_SIZE);
+
     int max_rows, max_cols, penalty;
 	char * tempchar;
 	// the lengths of the two sequences should be able to divided by 16.
@@ -202,7 +213,7 @@ int main(int argc, char **argv){
 	fclose(fp);
 
 	int nworkitems, workgroupsize = 0;
-	nworkitems = 16;
+	nworkitems = BLOCK_SIZE;
 
 	if(nworkitems < 1 || workgroupsize < 0){
 		printf("ERROR: invalid or missing <num_work_items>[/<work_group_size>]\n"); 
@@ -221,7 +232,16 @@ int main(int argc, char **argv){
 	const char * slist[2] = { source, 0 };
 	cl_program prog = clCreateProgramWithSource(context, 1, slist, NULL, &err);
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateProgramWithSource() => %d\n", err); return -1; }
-	err = clBuildProgram(prog, 0, NULL, NULL, NULL, NULL);
+
+	char clOptions[110];
+	//  sprintf(clOptions,"-I../../src");                                                                                 
+	sprintf(clOptions," ");
+
+#ifdef BLOCK_SIZE
+	sprintf(clOptions + strlen(clOptions), " -DBLOCK_SIZE=%d", BLOCK_SIZE);
+#endif
+
+	err = clBuildProgram(prog, 0, NULL, clOptions, NULL, NULL);
 	/*{ // show warnings/errors
 		static char log[65536]; memset(log, 0, sizeof(log));
 		cl_device_id device_id = 0;

@@ -26,7 +26,6 @@ return(k);
 __global__ void
 needle_cuda_shared_1(  int* referrence,
 			  int* matrix_cuda, 
-			  int* matrix_cuda_out, 
 			  int cols,
 			  int penalty,
 			  int i,
@@ -108,7 +107,6 @@ needle_cuda_shared_1(  int* referrence,
 __global__ void
 needle_cuda_shared_2(  int* referrence,
 			  int* matrix_cuda, 
-			  int* matrix_cuda_out, 
 			 
 			  int cols,
 			  int penalty,

@@ -110,7 +110,7 @@ char kernel_file[100]  = "Kernels.cl";
 int total_kernels = 5;
 //string kernel_names[9] = {"memset_kernel", "initialize_variables", "compute_step_factor", "compute_flux", "time_step", "compute_speed_sqd", "compute_velocity", "compute_pressure", "compute_speed_of_sound"};
 string kernel_names[5] = {"memset_kernel", "initialize_variables", "compute_step_factor", "compute_flux", "time_step"};
-int work_group_size = 192;
+int work_group_size = BLOCK_SIZE_0;
 int device_id_inused = 0; //deviced id used (default : 0)
 int number_devices = 0;
 

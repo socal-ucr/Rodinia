@@ -13,7 +13,7 @@
 //  video frame, based on the input x- and y-gradient matrices
 #ifdef USE_IMAGE
 __kernel void GICOV_kernel(int grad_m, image2d_t grad_x, image2d_t grad_y, __constant float *c_sin_angle,
-                           __constant float *c_cos_angle, __constant int *c_tX, __constant int *c_tY, __global float *gicov, int width, int height) {
+                           __constant float *c_cos_angle, __constant int *c_tX, __constant int *c_tY, __global float *gicov) {
 #else
 __kernel void GICOV_kernel(int grad_m, __global float *grad_x, __global float *grad_y, __constant float *c_sin_angle,
                            __constant float *c_cos_angle, __constant int *c_tX, __constant int *c_tY, __global float *gicov, int width, int height) {
@@ -102,6 +102,8 @@ __kernel void dilate_kernel(int img_m, int img_n, int strel_m, int strel_n, __co
 	int thread_id = get_global_id(0); //(blockIdx.x * blockDim.x) + threadIdx.x;
 	int i = thread_id % img_m;
 	int j = thread_id / img_m;
+
+	if(j > img_n) return;
 
 	// Initialize the maximum GICOV score seen so far to zero
 	float max = 0.0f;

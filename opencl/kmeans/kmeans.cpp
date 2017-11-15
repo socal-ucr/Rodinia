@@ -29,6 +29,28 @@
 #define FLT_MAX 3.40282347e+38
 #endif
 
+#ifdef RD_WG_SIZE_0_0
+        #define BLOCK_SIZE RD_WG_SIZE_0_0
+#elif defined(RD_WG_SIZE_0)
+        #define BLOCK_SIZE RD_WG_SIZE_0
+#elif defined(RD_WG_SIZE)
+        #define BLOCK_SIZE RD_WG_SIZE
+#else
+        #define BLOCK_SIZE 256
+#endif
+
+#ifdef RD_WG_SIZE_1_0
+     #define BLOCK_SIZE2 RD_WG_SIZE_1_0
+#elif defined(RD_WG_SIZE_1)
+     #define BLOCK_SIZE2 RD_WG_SIZE_1
+#elif defined(RD_WG_SIZE)
+     #define BLOCK_SIZE2 RD_WG_SIZE
+#else
+     #define BLOCK_SIZE2 256
+#endif
+
+
+
 // local variables
 static cl_context	    context;
 static cl_command_queue cmd_queue;
@@ -161,7 +183,7 @@ int allocate(int n_points, int n_features, int n_clusters, float **feature)
 	
 	size_t global_work[3] = { n_points, 1, 1 };
 	/// Ke Wang adjustable local group size 2013/08/07 10:37:33
-	size_t local_work_size=256;
+	size_t local_work_size= BLOCK_SIZE; // work group size is defined by RD_WG_SIZE_0 or RD_WG_SIZE_0_0 2014/06/10 17:00:51
 	if(global_work[0]%local_work_size !=0)
 	  global_work[0]=(global_work[0]/local_work_size+1)*local_work_size;
 
@@ -184,6 +206,8 @@ void deallocateMemory()
 
 int main( int argc, char** argv) 
 {
+	printf("WG size of kernel_swap = %d, WG size of kernel_kmeans = %d \n", BLOCK_SIZE, BLOCK_SIZE2);
+
 	setup(argc, argv);
 	shutdown();
 }
@@ -205,7 +229,7 @@ int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
 	size_t global_work[3] = { n_points, 1, 1 }; 
 
 	/// Ke Wang adjustable local group size 2013/08/07 10:37:33
-	size_t local_work_size=256;
+	size_t local_work_size=BLOCK_SIZE2; // work group size is defined by RD_WG_SIZE_1 or RD_WG_SIZE_1_0 2014/06/10 17:00:41
 	if(global_work[0]%local_work_size !=0)
 	  global_work[0]=(global_work[0]/local_work_size+1)*local_work_size;
 	

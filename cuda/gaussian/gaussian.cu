@@ -19,7 +19,26 @@
 #include <string.h>
 #include <math.h>
 
-#define MAXBLOCKSIZE 512
+#ifdef RD_WG_SIZE_0_0
+        #define MAXBLOCKSIZE RD_WG_SIZE_0_0
+#elif defined(RD_WG_SIZE_0)
+        #define MAXBLOCKSIZE RD_WG_SIZE_0
+#elif defined(RD_WG_SIZE)
+        #define MAXBLOCKSIZE RD_WG_SIZE
+#else
+        #define MAXBLOCKSIZE 512
+#endif
+
+//2D defines. Go from specific to general                                                
+#ifdef RD_WG_SIZE_1_0
+        #define BLOCK_SIZE_XY RD_WG_SIZE_1_0
+#elif defined(RD_WG_SIZE_1)
+        #define BLOCK_SIZE_XY RD_WG_SIZE_1
+#elif defined(RD_WG_SIZE)
+        #define BLOCK_SIZE_XY RD_WG_SIZE
+#else
+        #define BLOCK_SIZE_XY 4
+#endif
 
 int Size;
 float *a, *b, *finalVec;
@@ -72,6 +91,7 @@ create_matrix(float *m, int size){
 
 int main(int argc, char *argv[])
 {
+  printf("WG size of kernel 1 = %d, WG size of kernel 2= %d X %d\n", MAXBLOCKSIZE, BLOCK_SIZE_XY, BLOCK_SIZE_XY);
     int verbose = 1;
     int i, j;
     char flag;
@@ -332,7 +352,7 @@ void ForwardSub()
 	//dim3 dimGrid( (N/dimBlock.x) + (!(N%dimBlock.x)?0:1) );
 	
 	int blockSize2d, gridSize2d;
-	blockSize2d = 4;
+	blockSize2d = BLOCK_SIZE_XY;
 	gridSize2d = (Size/blockSize2d) + (!(Size%blockSize2d?0:1)); 
 	
 	dim3 dimBlockXY(blockSize2d,blockSize2d);

@@ -31,6 +31,8 @@ CUDA:
 	cd cuda/particlefilter;		make;	cp particlefilter_naive particlefilter_float $(CUDA_BIN_DIR)       
 	cd cuda/pathfinder;		make;	cp pathfinder $(CUDA_BIN_DIR)
 	cd cuda/mummergpu;  		make;	cp bin/mummergpu $(CUDA_BIN_DIR)
+	cd cuda/hybridsort;              make;   cp hybridsort $(CUDA_BIN_DIR)
+	cd cuda/dwt2d;                   make;   cp dwt2d  $(CUDA_BIN_DIR)
 	
 	
 OMP:
@@ -69,6 +71,8 @@ OPENCL:
 	cd opencl/gaussian;			make;	cp gaussian	$(OPENCL_BIN_DIR)
 	cd opencl/nn;				make;	cp nn	$(OPENCL_BIN_DIR)
 	cd opencl/heartwall;		make;	cp heartwall	$(OPENCL_BIN_DIR)
+	cd opencl/hybridsort;              make;   cp hybridsort $(CUDA_BIN_DIR)
+	cd opencl/dwt2d;                   make;   cp dwt2d  $(CUDA_BIN_DIR)
 	
 clean: CUDA_clean OMP_clean OCL_clean
 

@@ -25,6 +25,16 @@
 
 #include "common.h"
 
+#ifdef RD_WG_SIZE_0_0
+        #define BLOCK_SIZE RD_WG_SIZE_0_0
+#elif defined(RD_WG_SIZE_0)
+        #define BLOCK_SIZE RD_WG_SIZE_0
+#elif defined(RD_WG_SIZE)
+        #define BLOCK_SIZE RD_WG_SIZE
+#else
+        #define BLOCK_SIZE 16
+#endif
+
 static int do_verify = 0;
 
 static struct option long_options[] = {
@@ -42,6 +52,8 @@ lud_cuda(float *d_m, int matrix_dim);
 int
 main ( int argc, char *argv[] )
 {
+  printf("WG size of kernel = %d X %d\n", BLOCK_SIZE, BLOCK_SIZE);
+
   int matrix_dim = 32; /* default matrix_dim */
   int opt, option_index=0;
   func_ret_t ret;

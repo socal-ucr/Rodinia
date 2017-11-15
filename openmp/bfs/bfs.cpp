@@ -85,7 +85,7 @@ void BFSGraph( int argc, char** argv)
 
 	//read the source node from the file
 	fscanf(fp,"%d",&source);
-	source=0;
+	// source=0; //tesing code line
 
 	//set the source node as true in the mask
 	h_graph_mask[source]=true;
