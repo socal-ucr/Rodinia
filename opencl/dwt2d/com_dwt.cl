@@ -666,9 +666,12 @@ __kernel void cl_fdwt53Kernel(__global const int * const in,
     fdwt53.WIN_SIZE_Y = WIN_SIZE_Y;
 	
 	//initialize
-	for(int i = 0; i < sizeof(fdwt53.buffer)/sizeof(int); i++){
+    //Lingjie Zhang modified on 11/02/2015
+	//for(int i = 0; i < sizeof(fdwt53.buffer)/sizeof(int); i++){
+	for(int i = 0; i < sizeof(fdwt53.buffer.data)/sizeof(int); i++){
 		fdwt53.buffer.data[i] = 0;
 	}
+    //end of Lingjie Zhang modification
 	
 	fdwt53.buffer.SIZE_X = fdwt53.WIN_SIZE_X;
 	fdwt53.buffer.SIZE_Y = fdwt53.WIN_SIZE_Y + 3;

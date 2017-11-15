@@ -327,9 +327,13 @@ int main(int argc, char **argv){
         err = clEnqueueNDRangeKernel(cmd_queue, kernel2, 2, NULL, global_work, local_work, 0, 0, 0);
 		if(err != CL_SUCCESS) { printf("ERROR: 2 clEnqueueNDRangeKernel()=>%d failed\n", err); return -1; }
 	}
-	clFinish(cmd_queue);
-	fflush(stdout);
-	err = clEnqueueReadBuffer(cmd_queue, input_itemsets_d, 1, 0, max_cols * max_rows * sizeof(int), output_itemsets, 0, 0, 0);
+    
+    // Lingjie Zhang modified at Nov 1, 2015
+    //	clFinish(cmd_queue);
+    //	fflush(stdout);
+	//end Lingjie Zhang modification
+
+    err = clEnqueueReadBuffer(cmd_queue, input_itemsets_d, 1, 0, max_cols * max_rows * sizeof(int), output_itemsets, 0, 0, 0);
 	clFinish(cmd_queue);
 
 //#define TRACEBACK	

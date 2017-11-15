@@ -25,7 +25,7 @@
 #include "common.h"
 
 static int do_verify = 0;
-int omp_num_threads = 1;
+int omp_num_threads = 40;
 
 static struct option long_options[] = {
   /* name, has_arg, flag, val */
@@ -49,7 +49,7 @@ main ( int argc, char *argv[] )
   stopwatch sw;
 
 	
-  while ((opt = getopt_long(argc, argv, "::vs:i:", 
+  while ((opt = getopt_long(argc, argv, "::vs:n:i:", 
                             long_options, &option_index)) != -1 ) {
     switch(opt){
     case 'i':
@@ -57,6 +57,9 @@ main ( int argc, char *argv[] )
       break;
     case 'v':
       do_verify = 1;
+      break;
+    case 'n':
+      omp_num_threads = atoi(optarg);
       break;
     case 's':
       matrix_dim = atoi(optarg);
@@ -126,7 +129,7 @@ main ( int argc, char *argv[] )
     lud_verify(mm, m, matrix_dim); 
     free(mm);
   }
-
+  
   free(m);
 
   return EXIT_SUCCESS;

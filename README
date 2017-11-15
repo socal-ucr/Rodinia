@@ -1,4 +1,4 @@
-Rodinia Benchmark Suite 2.1
+Rodinia Benchmark Suite 3.1
 ===========================
 
 I. Overview
@@ -13,7 +13,7 @@ II. Usage
 rodinia_2.1/bin		: binary executables
 rodinia_2.1/common	: common configuration file
 rodinia_2.1/cuda	: source code for the CUDA implementations
-rodinia_2.1/data	: input files (run ./get_data.sh to get these files)
+rodinia_2.1/data	: input files
 rodinia_2.1/openmp	: source code for the OpenMP implementations
 rodinia_2.1/opencl	: source code for the OpenCL implementations
 
@@ -31,6 +31,38 @@ benchmark directory and make individual programs.
 There is a 'run' file specifying the sample command to run each program.
 
 IV. Change Log
+Dec. 12, 2015: Rodinia 3.1 is released
+********************************************************
+1. Bug fix
+1). OpenCL version Hotspot (Thanks Shuai Che from AMD)
+    Delete this parameter "CL_MEM_ALLOC_HOST_PTR" for device-side buffer allocation.
+2).  OpenCL version Kmeans (Thanks Jeroen Ketema from Imperial College London, Tzu-Te from National Chiao Tung University, Shuai Che and Michael Boyer form AMD )
+    Fix data race problem for reduce kernel.
+3).  OpenCL version Leukocyte (Thanks Jeroen Ketema from Imperial College London)
+    Fix data race problem for find_ellipse kernel.
+4).  OpenCL version srad (Thanks Jeroen Ketema from Imperial College London)
+    Fix data race problem for reduce kernel
+5).  OpenCL version dwt2d (Thanks Tzu-Te from National Chiao Tung University)
+    Fix a bug for buffer size. 
+
+2. New benchmarks (Thanks Linh Nguyen from Hampden-Sydney College)
+1).  Hotspot3D(CUDA, OpenMP and OpenCL version)
+2).  Huffman (only CUDA version)
+
+3. Performance improvement
+1). Openmp version nn (Thanks Shuai Che from AMD)
+2). OpenCL version nw (Thanks Shuai Che from AMD)
+3). CUDA version cfd (Thanks Ke)
+
+5. Several OpenMP benchmarks have been improved (Thanks Sergey Vinogradov and Julia Fedorova from Intel)
+1). BFS
+2). LUD
+3). HotSpot
+4). CFD
+5). NW
+
+
+
 Mar. 02, 2013: Rodinia 2.3 is released
 ***********************************************************************
 A.   General
