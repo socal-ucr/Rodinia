@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include "cuda.h"
 #include <string.h>
+#include <math.h>
 
 #define MAXBLOCKSIZE 512
 
@@ -30,8 +31,8 @@ void InitProblemOnce(char *filename);
 void InitPerRun();
 void ForwardSub();
 void BackSub();
-void Fan1(float *m, float *a, int Size, int t);
-void Fan2(float *m, float *a, float *b,int Size, int j1, int t);
+__global__ void Fan1(float *m, float *a, int Size, int t);
+__global__ void Fan2(float *m, float *a, float *b,int Size, int j1, int t);
 void InitMat(float *ary, int nrow, int ncol);
 void InitAry(float *ary, int ary_size);
 void PrintMat(float *ary, int nrow, int ncolumn);
@@ -41,12 +42,44 @@ void checkCUDAError(const char *msg);
 
 unsigned int totalKernelTime = 0;
 
+// create both matrix and right hand side, Ke Wang 2013/08/12 11:51:06
+void
+create_matrix(float *m, int size){
+  int i,j;
+  float lamda = -0.01;
+  float coe[2*size-1];
+  float coe_i =0.0;
+
+  for (i=0; i < size; i++)
+    {
+      coe_i = 10*exp(lamda*i); 
+      j=size-1+i;     
+      coe[j]=coe_i;
+      j=size-1-i;     
+      coe[j]=coe_i;
+    }
+
+
+  for (i=0; i < size; i++) {
+      for (j=0; j < size; j++) {
+	m[i*size+j]=coe[size-1-i+j];
+      }
+  }
+
+
+}
+
+
 int main(int argc, char *argv[])
 {
     int verbose = 1;
+    int i, j;
+    char flag;
     if (argc < 2) {
-        printf("Usage: gaussian matrix.txt [-q]\n\n");
+        printf("Usage: gaussian -f filename / -s size [-q]\n\n");
         printf("-q (quiet) suppresses printing the matrix and result values.\n");
+        printf("-f (filename) path of input file\n");
+        printf("-s (size) size of matrix. Create matrix and rhs in this program \n");
         printf("The first line of the file contains the dimension of the matrix, n.");
         printf("The second line of the file is a newline.\n");
         printf("The next n lines contain n tab separated values for the matrix.");
@@ -71,10 +104,37 @@ int main(int argc, char *argv[])
     //PrintDeviceProperties();
     //char filename[100];
     //sprintf(filename,"matrices/matrix%d.txt",size);
-    InitProblemOnce(argv[1]);
-    if (argc > 2) {
-        if (!strcmp(argv[2],"-q")) verbose = 0;
+
+    for(i=1;i<argc;i++) {
+      if (argv[i][0]=='-') {// flag
+        flag = argv[i][1];
+          switch (flag) {
+            case 's': // platform
+              i++;
+              Size = atoi(argv[i]);
+	      printf("Create matrix internally in parse, size = %d \n", Size);
+
+	      a = (float *) malloc(Size * Size * sizeof(float));
+	      create_matrix(a, Size);
+
+	      b = (float *) malloc(Size * sizeof(float));
+	      for (j =0; j< Size; j++)
+	    	b[j]=1.0;
+
+	      m = (float *) malloc(Size * Size * sizeof(float));
+              break;
+            case 'f': // platform
+              i++;
+	      printf("Read file from %s \n", argv[i]);
+	      InitProblemOnce(argv[i]);
+              break;
+            case 'q': // quiet
+	      verbose = 0;
+              break;
+	  }
+      }
     }
+
     //InitProblemOnce(filename);
     InitPerRun();
     //begin timing

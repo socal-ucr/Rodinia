@@ -27,7 +27,7 @@
 // change to double if double precision needed
 #define fp float
 
-#define DEFAULT_ORDER 508
+#define DEFAULT_ORDER 256
 
 //======================================================================================================================================================150
 //	STRUCTURES (had to bring from ../common.h here because feature of including headers in clBuildProgram does not work for some reason)

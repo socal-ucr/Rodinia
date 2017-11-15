@@ -2,55 +2,110 @@
 #define __GAUSSIAN_ELIMINATION__
 
 #include "gaussianElim.h"
+#include <math.h>
 
 cl_context context=NULL;
+
+// create both matrix and right hand side, Ke Wang 2013/08/12 11:51:06
+void
+create_matrix(float *m, int size){
+  int i,j;
+  float lamda = -0.01;
+  float coe[2*size-1];
+  float coe_i =0.0;
+
+  for (i=0; i < size; i++)
+    {
+      coe_i = 10*exp(lamda*i); 
+      j=size-1+i;     
+      coe[j]=coe_i;
+      j=size-1-i;     
+      coe[j]=coe_i;
+    }
+
+
+  for (i=0; i < size; i++) {
+      for (j=0; j < size; j++) {
+	m[i*size+j]=coe[size-1-i+j];
+      }
+  }
+
+
+}
+
 
 int main(int argc, char *argv[]) {
     float *a=NULL, *b=NULL, *finalVec=NULL;
     float *m=NULL;
-    int size;
+    int size = -1;
     
     FILE *fp;
     
     // args
-    char filename[100];
+    char filename[200];
     int quiet=0,timing=0,platform=-1,device=-1;
     
     // parse command line
     if (parseCommandline(argc, argv, filename,
-                     &quiet, &timing, &platform, &device)) {
+			 &quiet, &timing, &platform, &device, &size)) {
     printUsage();
     return 0;
     }
 
     context = cl_init_context(platform,device,quiet);
     
-    fp = fopen(filename, "r");
-    fscanf(fp, "%d", &size);
+    if(size < 1)
+      {
+	fp = fopen(filename, "r");
+	fscanf(fp, "%d", &size);
     
-    a = (float *) malloc(size * size * sizeof(float));
-	 
+	a = (float *) malloc(size * size * sizeof(float));
 	InitMat(fp,size, a, size, size);
-	//printf("The input matrix a is:\n");
-	//PrintMat(a, size, size, size);
+
 	b = (float *) malloc(size * sizeof(float));
-	
 	InitAry(fp, b, size);
-	//printf("The input array b is:\n");
-	//PrintAry(b, size);
-	
-	// create the solution matrix
-	m = (float *) malloc(size * size * sizeof(float));
+
+	fclose(fp);
+
+      }
+    else
+      {
+	printf("create input internally before create, size = %d \n", size);
+
+	a = (float *) malloc(size * size * sizeof(float));
+	create_matrix(a, size);
+
+	b = (float *) malloc(size * sizeof(float));
+	for (int i =0; i< size; i++)
+	  b[i]=1.0;
+
+      }
+
+    if (!quiet) {    
+      printf("The input matrix a is:\n");
+      PrintMat(a, size, size, size);
+
+      printf("The input array b is:\n");
+      PrintAry(b, size);
+    }
+ 
+    // create the solution matrix
+    m = (float *) malloc(size * size * sizeof(float));
 	 
-	// create a new vector to hold the final answer
-	finalVec = (float *) malloc(size * sizeof(float));
+    // create a new vector to hold the final answer
+
+    finalVec = (float *) malloc(size * sizeof(float));
     
     InitPerRun(size,m);
 
     //begin timing	
+        // printf("The result of array b is before run: \n");
+        // PrintAry(b, size);
     
     // run kernels
-    ForwardSub(context,a,b,m,size,timing);
+	ForwardSub(context,a,b,m,size,timing);
+        // printf("The result of array b is after run: \n");
+        // PrintAry(b, size);
     
     //end timing
     if (!quiet) {
@@ -67,7 +122,6 @@ int main(int argc, char *argv[]) {
         PrintAry(finalVec,size);
     }
     
-    fclose(fp);
     free(m);
     free(a);
     free(b);
@@ -296,17 +350,28 @@ float eventTime(cl_event event,cl_command_queue command_queue){
     return (float)((eventEnd-eventStart)/1e9);
 }
 
+ // Ke Wang add a function to generate input internally
 int parseCommandline(int argc, char *argv[], char* filename,
-                     int *q, int *t, int *p, int *d){
+                     int *q, int *t, int *p, int *d, int *size){
     int i;
     if (argc < 2) return 1; // error
-    strncpy(filename,argv[1],100);
+    // strncpy(filename,argv[1],100);
     char flag;
     
     for(i=1;i<argc;i++) {
       if (argv[i][0]=='-') {// flag
         flag = argv[i][1];
           switch (flag) {
+            case 's': // platform
+              i++;
+              *size = atoi(argv[i]);
+	      printf("Create matrix internally in parse, size = %d \n", *size);
+              break;
+            case 'f': // platform
+              i++;
+	      strncpy(filename,argv[i],100);
+	      printf("Read file from %s \n", filename);
+              break;
             case 'h': // help
               return 1;
               break;
@@ -413,7 +478,7 @@ void PrintMat(float *ary, int size, int nrow, int ncol)
 	
 	for (i=0; i<nrow; i++) {
 		for (j=0; j<ncol; j++) {
-			printf("%8.2f ", *(ary+size*i+j));
+			printf("%8.2e ", *(ary+size*i+j));
 		}
 		printf("\n");
 	}
@@ -428,7 +493,7 @@ void PrintAry(float *ary, int ary_size)
 {
 	int i;
 	for (i=0; i<ary_size; i++) {
-		printf("%.2f ", ary[i]);
+		printf("%.2e ", ary[i]);
 	}
 	printf("\n\n");
 }

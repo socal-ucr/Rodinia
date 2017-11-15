@@ -28,11 +28,11 @@
 static int do_verify = 0;
 
 static struct option long_options[] = {
-      /* name, has_arg, flag, val */
-      {"input", 1, NULL, 'i'},
-      {"size", 1, NULL, 's'},
-      {"verify", 0, NULL, 'v'},
-      {0,0,0,0}
+  /* name, has_arg, flag, val */
+  {"input", 1, NULL, 'i'},
+  {"size", 1, NULL, 's'},
+  {"verify", 0, NULL, 'v'},
+  {0,0,0,0}
 };
 
 extern void
@@ -51,52 +51,66 @@ main ( int argc, char *argv[] )
 
   while ((opt = getopt_long(argc, argv, "::vs:i:", 
                             long_options, &option_index)) != -1 ) {
-      switch(opt){
-        case 'i':
-          input_file = optarg;
-          break;
-        case 'v':
-          do_verify = 1;
-          break;
-        case 's':
-          matrix_dim = atoi(optarg);
-          fprintf(stderr, "Currently not supported, use -i instead\n");
-          fprintf(stderr, "Usage: %s [-v] [-s matrix_size|-i input_file]\n", argv[0]);
-          exit(EXIT_FAILURE);
-        case '?':
-          fprintf(stderr, "invalid option\n");
-          break;
-        case ':':
-          fprintf(stderr, "missing argument\n");
-          break;
-        default:
-          fprintf(stderr, "Usage: %s [-v] [-s matrix_size|-i input_file]\n",
-                  argv[0]);
-          exit(EXIT_FAILURE);
-      }
+    switch(opt){
+    case 'i':
+      input_file = optarg;
+      break;
+    case 'v':
+      do_verify = 1;
+      break;
+    case 's':
+      matrix_dim = atoi(optarg);
+      printf("Generate input matrix internally, size =%d\n", matrix_dim);
+      // fprintf(stderr, "Currently not supported, use -i instead\n");
+      // fprintf(stderr, "Usage: %s [-v] [-s matrix_size|-i input_file]\n", argv[0]);
+      // exit(EXIT_FAILURE);
+      break;
+    case '?':
+      fprintf(stderr, "invalid option\n");
+      break;
+    case ':':
+      fprintf(stderr, "missing argument\n");
+      break;
+    default:
+      fprintf(stderr, "Usage: %s [-v] [-s matrix_size|-i input_file]\n",
+	      argv[0]);
+      exit(EXIT_FAILURE);
+    }
   }
   
   if ( (optind < argc) || (optind == 1)) {
-      fprintf(stderr, "Usage: %s [-v] [-s matrix_size|-i input_file]\n", argv[0]);
-      exit(EXIT_FAILURE);
+    fprintf(stderr, "Usage: %s [-v] [-s matrix_size|-i input_file]\n", argv[0]);
+    exit(EXIT_FAILURE);
   }
 
   if (input_file) {
-      printf("Reading matrix from file %s\n", input_file);
-      ret = create_matrix_from_file(&m, input_file, &matrix_dim);
-      if (ret != RET_SUCCESS) {
-          m = NULL;
-          fprintf(stderr, "error create matrix from file %s\n", input_file);
-          exit(EXIT_FAILURE);
-      }
-  } else {
+    printf("Reading matrix from file %s\n", input_file);
+    ret = create_matrix_from_file(&m, input_file, &matrix_dim);
+    if (ret != RET_SUCCESS) {
+      m = NULL;
+      fprintf(stderr, "error create matrix from file %s\n", input_file);
+      exit(EXIT_FAILURE);
+    }
+  } 
+  else if (matrix_dim) {
+    printf("Creating matrix internally size=%d\n", matrix_dim);
+    ret = create_matrix(&m, matrix_dim);
+    if (ret != RET_SUCCESS) {
+      m = NULL;
+      fprintf(stderr, "error create matrix internally size=%d\n", matrix_dim);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+
+  else {
     printf("No input file specified!\n");
     exit(EXIT_FAILURE);
   }
 
   if (do_verify){
     printf("Before LUD\n");
-    print_matrix(m, matrix_dim);
+    // print_matrix(m, matrix_dim);
     matrix_duplicate(m, &mm, matrix_dim);
   }
 
@@ -106,12 +120,12 @@ main ( int argc, char *argv[] )
   /* beginning of timing point */
   stopwatch_start(&sw);
   cudaMemcpy(d_m, m, matrix_dim*matrix_dim*sizeof(float), 
-      cudaMemcpyHostToDevice);
+	     cudaMemcpyHostToDevice);
 
   lud_cuda(d_m, matrix_dim);
 
   cudaMemcpy(m, d_m, matrix_dim*matrix_dim*sizeof(float), 
-      cudaMemcpyDeviceToHost);
+	     cudaMemcpyDeviceToHost);
 
   /* end of timing point */
   stopwatch_stop(&sw);
@@ -122,7 +136,7 @@ main ( int argc, char *argv[] )
 
   if (do_verify){
     printf("After LUD\n");
-    print_matrix(m, matrix_dim);
+    // print_matrix(m, matrix_dim);
     printf(">>>Verify<<<<\n");
     lud_verify(mm, m, matrix_dim); 
     free(mm);

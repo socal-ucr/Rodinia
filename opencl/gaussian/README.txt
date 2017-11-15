@@ -44,8 +44,8 @@ Gaussian Elimination Usage
     example:
     $ ./gaussianElimination matrix4.txt
     
-    filename     the filename that holds the matrix data
-    
+    -f [filename] The filename that holds the matrix data
+    -s [int]     Generate matrix and rhs in specified size
     -h, --help   Display the help file
     -q           Quiet mode. Suppress all text output.
     -t           Print timing information.
