@@ -3,12 +3,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <needle.h>
+#include "needle.h"
 #include <cuda.h>
 #include <sys/time.h>
 
 // includes, kernels
-#include <needle_kernel.cu>
+#include "needle_kernel.cu"
 
 ////////////////////////////////////////////////////////////////////////////////
 // declaration, forward

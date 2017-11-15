@@ -203,7 +203,7 @@ void _clInit()
     //std::cout<<"device number:"<<deviceListSize<<std::endl;
 
     /* Now, allocate the device list */
-    oclHandles.devices = (cl_device_id *)malloc(deviceListSize);
+    oclHandles.devices = (cl_device_id *)malloc(deviceListSize * sizeof(cl_device_id));
 
     if (oclHandles.devices == 0)
         throw(string("InitCL()::Error: Could not allocate memory."));
@@ -238,10 +238,10 @@ void _clInit()
     if ((resultCL != CL_SUCCESS) || (oclHandles.program == NULL))
         throw(string("InitCL()::Error: Loading Binary into cl_program. (clCreateProgramWithBinary)"));    
     //insert debug information
-    std::string options= "-cl-nv-verbose";
+    //std::string options= "-cl-nv-verbose"; //Doesn't work on AMD machines
     //options += " -cl-nv-opt-level=3";
-    resultCL = clBuildProgram(oclHandles.program, deviceListSize, oclHandles.devices, options.c_str(), NULL,  NULL);
-	
+    resultCL = clBuildProgram(oclHandles.program, deviceListSize, oclHandles.devices, NULL, NULL,NULL);
+
     if ((resultCL != CL_SUCCESS) || (oclHandles.program == NULL))
     {
         cerr << "InitCL()::Error: In clBuildProgram" << endl;
@@ -343,7 +343,7 @@ void _clInit()
 //release CL objects
 void _clRelease()
 {
-    bool errorFlag = false;
+    char errorFlag = false;
 
     for (int nKernel = 0; nKernel < oclHandles.kernel.size(); nKernel++)
     {
@@ -414,7 +414,7 @@ cl_mem _clCreateAndCpyMem(int size, void * h_mem_source) throw(string){
 //--date:	17/01/2011	
 cl_mem _clMallocRW(int size, void * h_mem_ptr) throw(string){
  	cl_mem d_mem;
-	d_mem = clCreateBuffer(oclHandles.context, CL_MEM_READ_WRITE, size, h_mem_ptr, &oclHandles.cl_status);
+	d_mem = clCreateBuffer(oclHandles.context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, size, h_mem_ptr, &oclHandles.cl_status);
 	#ifdef ERRMSG
 	if(oclHandles.cl_status != CL_SUCCESS)
 		throw(string("excpetion in _clMallocRW"));
@@ -426,7 +426,7 @@ cl_mem _clMallocRW(int size, void * h_mem_ptr) throw(string){
 //--date:	17/01/2011	
 cl_mem _clMalloc(int size, void * h_mem_ptr) throw(string){
  	cl_mem d_mem;
-	d_mem = clCreateBuffer(oclHandles.context, CL_MEM_READ_ONLY, size, h_mem_ptr, &oclHandles.cl_status);
+	d_mem = clCreateBuffer(oclHandles.context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, size, h_mem_ptr, &oclHandles.cl_status);
 	#ifdef ERRMSG
 	if(oclHandles.cl_status != CL_SUCCESS)
 		throw(string("excpetion in _clMalloc"));
@@ -465,7 +465,7 @@ cl_mem _clCreateAndCpyPinnedMem(int size, float* h_mem_source) throw(string){
 	#endif
 	//----------
 	h_mem_pinned = (cl_float *)clEnqueueMapBuffer(oclHandles.queue, d_mem_pinned, CL_TRUE,  \
-										CL_MAP_WRITE, 0, size, NULL, NULL,  \
+										CL_MAP_WRITE, 0, size, 0, NULL,  \
 										NULL,  &oclHandles.cl_status);
 	#ifdef ERRMSG
 	if(oclHandles.cl_status != CL_SUCCESS)
@@ -705,11 +705,11 @@ void _clInvokeKernel(int kernel_id, int work_items, int work_group_size) throw(s
 		throw(oclHandles.error_str);	
 	#endif
 	//_clFinish();
-	/*oclHandles.cl_status = clWaitForEvents(1, &e[0]);
-	#ifdef ERRMSG
-        if (oclHandles.cl_status!= CL_SUCCESS)
-            throw(string("excpetion in _clEnqueueNDRange() -> clWaitForEvents"));
-	#endif*/
+	// oclHandles.cl_status = clWaitForEvents(1, &e[0]);
+	// #ifdef ERRMSG
+        // if (oclHandles.cl_status!= CL_SUCCESS)
+        //     throw(string("excpetion in _clEnqueueNDRange() -> clWaitForEvents"));
+	// #endif
 }
 void _clInvokeKernel2D(int kernel_id, int range_x, int range_y, int group_x, int group_y) throw(string){
 	cl_uint work_dim = WORK_DIM;

@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "OpenCL.h"
 
 OpenCL::OpenCL(int displayOutput)

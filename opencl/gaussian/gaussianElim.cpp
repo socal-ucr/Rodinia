@@ -72,6 +72,7 @@ int main(int argc, char *argv[]) {
     free(a);
     free(b);
     free(finalVec);
+    cl_cleanup();
   //OpenClGaussianElimination(context,timing);
 
   return 0;

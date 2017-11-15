@@ -180,7 +180,7 @@ void deallocateMemory()
 int main( int argc, char** argv) 
 {
 	setup(argc, argv);
-
+	shutdown();
 }
 
 int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */

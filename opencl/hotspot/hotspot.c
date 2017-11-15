@@ -281,5 +281,7 @@ int main(int argc, char** argv) {
 	clReleaseMemObject(MatrixTemp[1]);
 	clReleaseMemObject(MatrixPower);
 	
+        clReleaseContext(context);
+
 	return 0;
 }

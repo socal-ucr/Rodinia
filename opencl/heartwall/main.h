@@ -4,7 +4,11 @@
 
 #define fp float
 
-#define NUMBER_THREADS 512
+#define NUMBER_THREADS 256
+#define CHECK 37
+// #define TEST_CHECKSUM
+// #define TEST_OUTPUT
+// #define INIT
 
 // need to define these for static allocation of constant memory in GPU, because it cannot be allocated dynamically
 #define ENDO_POINTS 20

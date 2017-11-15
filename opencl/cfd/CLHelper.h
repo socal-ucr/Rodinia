@@ -397,7 +397,8 @@ void _clInit(string device_type, int device_id)throw(string){
 #endif
 	number_devices = deviceListSize;
     // Now, allocate the device list 
-    oclHandles.devices = (cl_device_id *)malloc(deviceListSize);
+	//    oclHandles.devices = (cl_device_id *)malloc(deviceListSize);
+    oclHandles.devices = (cl_device_id *)malloc(sizeof(cl_device_id) * deviceListSize);
 
     if (oclHandles.devices == 0)
         throw(string("InitCL()::Error: Could not allocate memory."));
@@ -1218,7 +1219,7 @@ void _clInvokeKernel(int kernel_id, int work_items, int work_group_size) throw(s
 	}
 	#endif
 	//_clFinish();
-	oclHandles.cl_status = clWaitForEvents(1, &e[0]);
+	//	oclHandles.cl_status = clWaitForEvents(1, &e[0]);
 	#ifdef ERRMSG
     if (oclHandles.cl_status!= CL_SUCCESS){
     	oclHandles.error_str = "excpetion in _clEnqueueNDRange() -> clWaitForEvents ->";
@@ -1349,7 +1350,7 @@ void _clInvokeKernel2D(int kernel_id, int range_x, int range_y, int group_x, int
 	}
 	#endif
 		
-	oclHandles.cl_status = clWaitForEvents(1, &e[0]);
+	//	oclHandles.cl_status = clWaitForEvents(1, &e[0]);
 
 #ifdef ERRMSG
         if (oclHandles.cl_status!= CL_SUCCESS)
